@@ -1,5 +1,7 @@
 # RazorDbManager
 
+[English](README.md) | [简体中文](README.zh-CN.md)
+
 RazorDbManager is a self-contained database-management surface for .NET 10
 Blazor Web Apps. The first provider supports MySQL and MariaDB with an
 Interactive Server UI, bounded data access, row editing, structured schema

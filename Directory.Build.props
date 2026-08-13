@@ -9,6 +9,8 @@
     <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
     <Authors>RazorDbManager contributors</Authors>
     <RepositoryType>git</RepositoryType>
+    <RepositoryUrl>https://github.com/ssccinng/RazorDbManager</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/ssccinng/RazorDbManager</PackageProjectUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 </Project>

@@ -79,6 +79,7 @@ try {
         "staticwebassets/razordbmanager-accessibility.js",
         "staticwebassets/*.bundle.scp.css",
         "README.md",
+        "README.zh-CN.md",
         "SECURITY.md",
         "THIRD-PARTY-NOTICES.md"
     )
@@ -120,6 +121,10 @@ Assert-PackageEntryMatchesFile $rclPackage "staticwebassets/razordbmanager-acces
     (Join-Path $repositoryRoot "src\RazorDbManager\wwwroot\razordbmanager-accessibility.js")
 
 $securityDocument = Join-Path $repositoryRoot "SECURITY.md"
+$chineseReadme = Join-Path $repositoryRoot "README.zh-CN.md"
+Assert-PackageEntryMatchesFile $corePackage "README.zh-CN.md" $chineseReadme
+Assert-PackageEntryMatchesFile $rclPackage "README.zh-CN.md" $chineseReadme
+Assert-PackageEntryMatchesFile $mySqlPackage "README.zh-CN.md" $chineseReadme
 Assert-PackageEntryMatchesFile $corePackage "SECURITY.md" $securityDocument
 Assert-PackageEntryMatchesFile $rclPackage "SECURITY.md" $securityDocument
 Assert-PackageEntryMatchesFile $mySqlPackage "SECURITY.md" $securityDocument
