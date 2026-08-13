@@ -139,7 +139,7 @@ function observePage(currentPage) {
   });
   currentPage.on("pageerror", error => report.pageErrors.push(error.message));
   currentPage.on("requestfailed", request => {
-    if (sameOrigin(request.url())) {
+    if (sameOrigin(request.url()) && !isExpectedDownloadAbort(request)) {
       report.requestFailures.push({ url: request.url(), error: request.failure()?.errorText || "unknown" });
     }
   });
@@ -588,6 +588,13 @@ async function screenshot(name) {
 
 function sameOrigin(value) {
   return new URL(value).origin === new URL(baseUrl).origin;
+}
+
+function isExpectedDownloadAbort(request) {
+  const error = request.failure()?.errorText;
+  const url = new URL(request.url());
+  return error === "net::ERR_ABORTED"
+    && url.pathname.startsWith("/_razor-db-manager/artifacts/");
 }
 
 function normalizeBaseUrl(value) {
