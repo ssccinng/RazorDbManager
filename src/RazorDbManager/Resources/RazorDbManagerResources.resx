@@ -214,4 +214,13 @@
   <data name="ConfirmBatchDelete" xml:space="preserve"><value>Delete {0} selected rows? The entire batch rolls back if any row changed.</value></data>
   <data name="BatchDeleteConflict" xml:space="preserve"><value>A selected row changed or no longer exists. No rows were deleted.</value></data>
   <data name="DeleteRows" xml:space="preserve"><value>Batch delete rows</value></data>
+  <data name="ExecutedSql" xml:space="preserve"><value>Executed SQL</value></data>
+  <data name="CommandCount" xml:space="preserve"><value>{0} command(s)</value></data>
+  <data name="CommandNumber" xml:space="preserve"><value>Command {0}</value></data>
+  <data name="NoParameters" xml:space="preserve"><value>No parameters</value></data>
+  <data name="ViewSql" xml:space="preserve"><value>View SQL</value></data>
+  <data name="RowsReturned" xml:space="preserve"><value>Rows returned</value></data>
+  <data name="SessionQueries" xml:space="preserve"><value>Session queries</value></data>
+  <data name="SessionOnly" xml:space="preserve"><value>Kept in this component session only</value></data>
+  <data name="NoSessionQueries" xml:space="preserve"><value>No data queries have run in this session.</value></data>
 </root>

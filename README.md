@@ -15,6 +15,12 @@ InnoDB selections. The SQL console can generate quoted `SELECT`, `WHERE`,
 `UPDATE` and `DELETE` templates start with `WHERE 1 = 0` and are never executed
 automatically.
 
+Every data-page query exposes the parameterized command text that the provider
+actually executed, together with bounded parameter value previews and per-command
+timing. The component also keeps the latest 50 queries in its in-memory session
+activity. Query commands and parameter values are not persisted to the audit store;
+they disappear when the component circuit ends or switches databases.
+
 The browser never receives a database connection string. Every operation
 request is checked against the registered capability ceiling, the host
 application's authorization policies, the allowed-schema list, and the

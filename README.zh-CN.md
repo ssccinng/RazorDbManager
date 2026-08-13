@@ -13,6 +13,10 @@ provider 支持 MySQL 和 MariaDB，使用 Interactive Server 渲染，提供有
 `WHERE`、`INSERT`、`UPDATE` 和 `DELETE` 模板；生成的 `UPDATE`、`DELETE`
 默认带有 `WHERE 1 = 0`，而且不会自动执行。
 
+每次数据页查询都可以展开查看 provider 实际执行的参数化 SQL、受长度限制的参数值
+预览和每条命令耗时。组件还会在内存中保留最近 50 次本次会话查询；SQL 和参数值
+不会写入审计存储，并在组件 circuit 结束或切换数据库时消失。
+
 浏览器永远不会收到数据库连接字符串。每项操作都会同时检查注册连接的 capability
 上限、宿主应用授权策略、允许的 Schema 列表和数据库账号自身 grants。后台任务的
 重新授权规则见下文。SQL 工作区内置 CodeMirror 6，宿主不需要安装前端包或添加

@@ -32,6 +32,14 @@ public sealed class WorkspacePagingTests
             Assert.Equal(500, forwarded.Page.PageSize);
             Assert.Same(anchor, forwarded.Page.After);
             Assert.Equal(37, forwarded.Page.Offset);
+
+            IRazorDbAuditReader auditReader = scope.ServiceProvider.GetRequiredService<IRazorDbAuditReader>();
+            IReadOnlyList<RazorDbAuditRecord> persistedAudit = await auditReader.ListAsync(
+                "Main",
+                "alice",
+                50,
+                CancellationToken.None);
+            Assert.Empty(persistedAudit);
         }
         finally
         {

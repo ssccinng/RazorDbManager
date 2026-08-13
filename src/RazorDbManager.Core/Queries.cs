@@ -168,6 +168,24 @@ public sealed record DbRow(IReadOnlyList<DbValue> Values, RowIdentity? Identity)
     public RowIdentity? EffectiveBinaryIdentity => BinaryIdentity ?? Identity;
 }
 
+/// <summary>Describes one parameter from a database command that was actually executed.</summary>
+/// <param name="Name">The provider parameter name.</param>
+/// <param name="DatabaseType">The provider database type selected for execution.</param>
+/// <param name="ValuePreview">A bounded display value. Binary values are never included verbatim.</param>
+public sealed record DbCommandParameterDiagnostic(
+    string Name,
+    string DatabaseType,
+    string ValuePreview);
+
+/// <summary>Describes a parameterized database command after it was executed.</summary>
+/// <param name="CommandText">The exact parameterized command text sent through the provider.</param>
+/// <param name="Parameters">The parameters attached to the command at execution time.</param>
+/// <param name="Elapsed">Elapsed provider execution and result-consumption time.</param>
+public sealed record DbCommandDiagnostic(
+    string CommandText,
+    IReadOnlyList<DbCommandParameterDiagnostic> Parameters,
+    TimeSpan Elapsed);
+
 /// <summary>Contains a bounded page of rows.</summary>
 /// <param name="Columns">Ordered result columns.</param>
 /// <param name="Rows">Returned rows.</param>
@@ -188,4 +206,11 @@ public sealed record RowPage(
     bool HasMore,
     string SchemaFingerprint,
     bool Truncated = false,
-    long? NextOffset = null);
+    long? NextOffset = null)
+{
+    /// <summary>
+    /// Gets the parameterized commands that the provider actually executed to produce this page.
+    /// Parameter values are bounded for display and must not be persisted as audit metadata.
+    /// </summary>
+    public IReadOnlyList<DbCommandDiagnostic> Commands { get; init; } = [];
+}

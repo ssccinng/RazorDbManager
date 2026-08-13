@@ -174,6 +174,7 @@
     private SqlExecutionResult? sqlResult;
     private IReadOnlyList<RazorDbJobRecord> jobs = Array.Empty<RazorDbJobRecord>();
     private IReadOnlyList<RazorDbAuditRecord> audit = Array.Empty<RazorDbAuditRecord>();
+    private readonly SessionQueryHistory sessionQueryHistory = new();
     private WorkspaceTab activeTab;
     private DbRow? editingRow;
     private DbRow? deletingRow;
@@ -352,6 +353,7 @@
                 pageNavigation.Reset();
             }
             rowPage = loadedPage;
+            sessionQueryHistory.Add(selectedObject.Name, loadedPage);
             selectedRows.Clear();
             if (useDraftQuery)
             {
@@ -1080,6 +1082,35 @@
                     </div>
                 </div>
             </details>
+            @if (rowPage is { Commands.Count: > 0 })
+            {
+                <details class="rdm-query-diagnostics">
+                    <summary><Icon Name="sql" /> @L["ExecutedSql"] <span class="rdm-context-meta">@L["CommandCount", rowPage.Commands.Count]</span></summary>
+                    <div class="rdm-query-command-list">
+                        @for (int commandIndex = 0; commandIndex < rowPage.Commands.Count; commandIndex++)
+                        {
+                            DbCommandDiagnostic command = rowPage.Commands[commandIndex];
+                            <section class="rdm-query-command">
+                                <div class="rdm-result-head"><strong>@L["CommandNumber", commandIndex + 1]</strong><span class="rdm-context-meta">@L["Milliseconds", command.Elapsed.TotalMilliseconds.ToString("N0")]</span></div>
+                                <pre class="rdm-command-sql"><code>@command.CommandText</code></pre>
+                                @if (command.Parameters.Count > 0)
+                                {
+                                    <div class="rdm-command-parameters">
+                                        @foreach (DbCommandParameterDiagnostic parameter in command.Parameters)
+                                        {
+                                            <div class="rdm-command-parameter"><code>@parameter.Name</code><span>@parameter.DatabaseType</span><code>@parameter.ValuePreview</code></div>
+                                        }
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="rdm-context-meta rdm-command-empty">@L["NoParameters"]</div>
+                                }
+                            </section>
+                        }
+                    </div>
+                </details>
+            }
             @if (selectedRows.Count > 0)
             {
                 <div class="rdm-batch-toolbar" role="toolbar" aria-label="@L["BatchActions"]">
@@ -1290,6 +1321,45 @@
             <button type="button" class="rdm-button" disabled="@activityLoading" @onclick="RefreshActivityAsync"><Icon Name="refresh" /> @L["Refresh"]</button>
         </div>
         <div class="rdm-activity-grid">
+        <div class="rdm-activity-box rdm-session-query-box">
+            <div class="rdm-list-head"><span>@L["SessionQueries"]</span><span class="rdm-session-label">@L["SessionOnly"]</span></div>
+            @if (sessionQueryHistory.Entries.Count == 0) { <div class="rdm-empty"><div class="rdm-empty-inner">@L["NoSessionQueries"]</div></div> }
+            @foreach (SessionQueryLogEntry entry in sessionQueryHistory.Entries)
+            {
+                <div class="rdm-session-query-row">
+                    <div class="rdm-session-query-head">
+                        <div><div class="rdm-activity-name"><code>@entry.Table.Schema.@entry.Table.Name</code></div><div class="rdm-activity-meta">@L["RowsReturned"]: @entry.RowsReturned.ToString("N0") · @L["CommandCount", entry.Commands.Count]@if (entry.Truncated) { <span> · @L["Truncated"]</span> }</div></div>
+                        <time>@entry.Timestamp.LocalDateTime.ToString("g")</time>
+                    </div>
+                    <details class="rdm-session-sql">
+                        <summary>@L["ViewSql"]</summary>
+                        <div class="rdm-query-command-list">
+                            @for (int commandIndex = 0; commandIndex < entry.Commands.Count; commandIndex++)
+                            {
+                                DbCommandDiagnostic command = entry.Commands[commandIndex];
+                                <section class="rdm-query-command">
+                                    <div class="rdm-result-head"><strong>@L["CommandNumber", commandIndex + 1]</strong><span class="rdm-context-meta">@L["Milliseconds", command.Elapsed.TotalMilliseconds.ToString("N0")]</span></div>
+                                    <pre class="rdm-command-sql"><code>@command.CommandText</code></pre>
+                                    @if (command.Parameters.Count > 0)
+                                    {
+                                        <div class="rdm-command-parameters">
+                                            @foreach (DbCommandParameterDiagnostic parameter in command.Parameters)
+                                            {
+                                                <div class="rdm-command-parameter"><code>@parameter.Name</code><span>@parameter.DatabaseType</span><code>@parameter.ValuePreview</code></div>
+                                            }
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="rdm-context-meta rdm-command-empty">@L["NoParameters"]</div>
+                                    }
+                                </section>
+                            }
+                        </div>
+                    </details>
+                </div>
+            }
+        </div>
         <div class="rdm-activity-box">
             <div class="rdm-list-head">@L["RecentJobs"]</div>
             @if (jobs.Count == 0) { <div class="rdm-empty"><div class="rdm-empty-inner">@L["NoActivity"]</div></div> }
@@ -1420,6 +1490,7 @@
         sqlResult = null;
         jobs = [];
         audit = [];
+        sessionQueryHistory.Clear();
         activeTab = WorkspaceTab.Data;
         editingRow = null;
         deletingRow = null;

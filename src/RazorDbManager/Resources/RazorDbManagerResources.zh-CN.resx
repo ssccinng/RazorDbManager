@@ -214,4 +214,13 @@
   <data name="ConfirmBatchDelete" xml:space="preserve"><value>确定删除选中的 {0} 行吗？任意一行已变化时将回滚整批操作。</value></data>
   <data name="BatchDeleteConflict" xml:space="preserve"><value>选中的某行已变化或不存在，本次未删除任何行。</value></data>
   <data name="DeleteRows" xml:space="preserve"><value>批量删除行</value></data>
+  <data name="ExecutedSql" xml:space="preserve"><value>执行 SQL</value></data>
+  <data name="CommandCount" xml:space="preserve"><value>共 {0} 条命令</value></data>
+  <data name="CommandNumber" xml:space="preserve"><value>命令 {0}</value></data>
+  <data name="NoParameters" xml:space="preserve"><value>无参数</value></data>
+  <data name="ViewSql" xml:space="preserve"><value>查看 SQL</value></data>
+  <data name="RowsReturned" xml:space="preserve"><value>返回行数</value></data>
+  <data name="SessionQueries" xml:space="preserve"><value>本次会话查询</value></data>
+  <data name="SessionOnly" xml:space="preserve"><value>仅保留在当前组件会话</value></data>
+  <data name="NoSessionQueries" xml:space="preserve"><value>本次会话尚未执行数据查询。</value></data>
 </root>

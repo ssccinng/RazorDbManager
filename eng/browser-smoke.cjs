@@ -307,14 +307,40 @@ async function verifyReadOnlyDataWorkflow(page, scenarioName) {
   const apply = advancedQuery.locator(".rdm-filter-actions .rdm-button-primary");
   await apply.click();
   await page.waitForFunction(element => !element.disabled, await apply.elementHandle(), { timeout: 15_000 });
+  await page.waitForFunction(() => Array.from(document.querySelectorAll(".rdm-query-diagnostics .rdm-command-sql"))
+    .some(element => /COUNT\(\*\)/i.test(element.textContent || "")), undefined, { timeout: 15_000 });
   assert.match(await page.locator(".rdm-pager-info").innerText(), /\d/,
     `${scenarioName}: exact row count did not render`);
+
+  const diagnostics = page.locator(".rdm-query-diagnostics");
+  await diagnostics.waitFor({ state: "visible", timeout: 10_000 });
+  if (!await diagnostics.getAttribute("open")) await diagnostics.locator("summary").click();
+  const executedCommands = await diagnostics.locator(".rdm-command-sql").allTextContents();
+  assert.ok(executedCommands.some(command => /^\s*SELECT\s+/i.test(command)),
+    `${scenarioName}: executed SELECT command is not visible on the data page`);
+  assert.ok(executedCommands.some(command => /COUNT\(\*\)/i.test(command)),
+    `${scenarioName}: exact-count command is not visible on the data page`);
+
+  const activityTab = page.getByRole("tab", { name: /^(活动记录|Activity)$/ });
+  await activityTab.click();
+  const sessionBox = page.locator(".rdm-session-query-box");
+  await sessionBox.waitFor({ state: "visible", timeout: 10_000 });
+  const sessionRows = sessionBox.locator(".rdm-session-query-row");
+  assert.ok(await sessionRows.count() > 0,
+    `${scenarioName}: the in-memory session query log is empty`);
+  const latestSessionSql = sessionRows.first().locator(".rdm-session-sql");
+  if (!await latestSessionSql.getAttribute("open")) await latestSessionSql.locator("summary").click();
+  assert.match(await latestSessionSql.locator(".rdm-command-sql").first().innerText(), /^\s*SELECT\s+/i,
+    `${scenarioName}: the session log does not expose the executed command`);
+  await page.getByRole("tab", { name: /^(数据|Data)$/ }).click();
 
   return {
     rows: rowCount,
     columns: columnCount,
     sorted: true,
     exactCountRequested: true,
+    executedCommands: executedCommands.length,
+    sessionQueries: await sessionRows.count(),
   };
 }
 

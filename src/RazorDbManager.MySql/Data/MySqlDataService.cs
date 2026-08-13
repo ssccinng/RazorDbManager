@@ -1,4 +1,6 @@
 using System.Data;
+using System.Diagnostics;
+using System.Globalization;
 using System.Text;
 using MySqlConnector;
 using RazorDbManager.Core;
@@ -69,11 +71,13 @@ internal sealed class MySqlDataService(
         }
 
         command.CommandText = sql.ToString();
+        var commands = new List<DbCommandDiagnostic>(request.IncludeTotalCount ? 2 : 1);
         var rows = new List<DbRow>(pageSize + 1);
         var cursorSafety = new List<bool>(pageSize + 1);
         long responseSize = 0;
         var byteTruncated = false;
         var stopReading = false;
+        Stopwatch commandStopwatch = Stopwatch.StartNew();
         await using (var reader = await command.ExecuteReaderAsync(System.Data.CommandBehavior.SequentialAccess, cancellationToken).ConfigureAwait(false))
         {
             while (rows.Count <= pageSize && await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
@@ -119,6 +123,8 @@ internal sealed class MySqlDataService(
                 cursorSafety.Add(effectiveSorts.All(sort => !truncatedColumns.Contains(sort.Column)));
             }
         }
+        commandStopwatch.Stop();
+        commands.Add(CreateCommandDiagnostic(command, commandStopwatch.Elapsed));
 
         var hasLookaheadRow = rows.Count > pageSize;
         if (hasLookaheadRow)
@@ -134,9 +140,17 @@ internal sealed class MySqlDataService(
         }
 
         var hasMore = hasLookaheadRow || stopReading;
-        long? total = request.IncludeTotalCount
-            ? await CountAsync(connection, request.Table, filter, cancellationToken).ConfigureAwait(false)
-            : null;
+        long? total = null;
+        if (request.IncludeTotalCount)
+        {
+            (long count, DbCommandDiagnostic diagnostic) = await CountAsync(
+                connection,
+                request.Table,
+                filter,
+                cancellationToken).ConfigureAwait(false);
+            total = count;
+            commands.Add(diagnostic);
+        }
         var cursor = MySqlKeysetPagination.CreateNextCursor(
             table,
             effectiveSorts,
@@ -153,7 +167,10 @@ internal sealed class MySqlDataService(
             hasMore,
             table.SchemaFingerprint,
             byteTruncated,
-            nextOffset);
+            nextOffset)
+        {
+            Commands = commands,
+        };
     }
 
     public async Task<RowMutationResult> InsertAsync(InsertRowRequest request, CancellationToken cancellationToken)
@@ -483,12 +500,57 @@ internal sealed class MySqlDataService(
             .ToDictionary(column => column, column => values[ordinals[column]], StringComparer.OrdinalIgnoreCase));
     }
 
-    private static async Task<long> CountAsync(MySqlConnection connection, DbObjectName table, CompiledSql filter, CancellationToken cancellationToken)
+    private static async Task<(long Count, DbCommandDiagnostic Diagnostic)> CountAsync(
+        MySqlConnection connection,
+        DbObjectName table,
+        CompiledSql filter,
+        CancellationToken cancellationToken)
     {
         await using var command = connection.CreateCommand();
         command.CommandText = $"SELECT COUNT(*) FROM {MySqlIdentifier.Qualify(table.Schema, table.Name)}{(filter.Text.Length > 0 ? $" WHERE {filter.Text}" : string.Empty)}";
         foreach (var parameter in filter.Parameters) command.Parameters.AddWithValue(parameter.Name, parameter.Value);
-        return Convert.ToInt64(await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false), System.Globalization.CultureInfo.InvariantCulture);
+        Stopwatch stopwatch = Stopwatch.StartNew();
+        object? result = await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
+        stopwatch.Stop();
+        return (
+            Convert.ToInt64(result, CultureInfo.InvariantCulture),
+            CreateCommandDiagnostic(command, stopwatch.Elapsed));
+    }
+
+    internal static DbCommandDiagnostic CreateCommandDiagnostic(MySqlCommand command, TimeSpan elapsed)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+        DbCommandParameterDiagnostic[] parameters = command.Parameters
+            .Cast<MySqlParameter>()
+            .Select(parameter => new DbCommandParameterDiagnostic(
+                parameter.ParameterName,
+                parameter.MySqlDbType.ToString(),
+                FormatParameterValue(parameter.Value)))
+            .ToArray();
+        return new DbCommandDiagnostic(command.CommandText, parameters, elapsed);
+    }
+
+    private static string FormatParameterValue(object? value)
+    {
+        if (value is null or DBNull) return "NULL";
+        if (value is byte[] bytes) return $"<binary {bytes.LongLength.ToString(CultureInfo.InvariantCulture)} bytes>";
+        if (value is ReadOnlyMemory<byte> memory) return $"<binary {memory.Length.ToString(CultureInfo.InvariantCulture)} bytes>";
+
+        string text = value switch
+        {
+            DateTime dateTime => dateTime.ToString("O", CultureInfo.InvariantCulture),
+            DateTimeOffset dateTimeOffset => dateTimeOffset.ToString("O", CultureInfo.InvariantCulture),
+            IFormattable formattable => formattable.ToString(null, CultureInfo.InvariantCulture),
+            _ => Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty,
+        };
+        text = text
+            .Replace("\r", "\\r", StringComparison.Ordinal)
+            .Replace("\n", "\\n", StringComparison.Ordinal)
+            .Replace("\t", "\\t", StringComparison.Ordinal);
+        const int maximumPreviewLength = 256;
+        return text.Length <= maximumPreviewLength
+            ? text
+            : text[..maximumPreviewLength] + $"... ({text.Length.ToString(CultureInfo.InvariantCulture)} chars)";
     }
 
     private static void ValidateEditColumns(DbTableMetadata table, IReadOnlyDictionary<string, EditValue> values)

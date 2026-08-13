@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using MySqlConnector;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using RazorDbManager.Core;
@@ -10,6 +11,26 @@ namespace RazorDbManager.MySql.Tests;
 
 public sealed class MySqlSqlServiceTests
 {
+    [Fact]
+    public void QueryCommandDiagnostic_UsesExecutedCommandTextAndBoundsValues()
+    {
+        using var command = new MySqlCommand("SELECT * FROM `app`.`users` WHERE `name` = @p0 AND `payload` = @p1 LIMIT @limit");
+        command.Parameters.AddWithValue("@p0", new string('x', 300));
+        command.Parameters.AddWithValue("@p1", new byte[12]);
+        command.Parameters.AddWithValue("@limit", 101);
+
+        DbCommandDiagnostic diagnostic = RazorDbManager.MySql.Data.MySqlDataService.CreateCommandDiagnostic(
+            command,
+            TimeSpan.FromMilliseconds(12));
+
+        Assert.Equal(command.CommandText, diagnostic.CommandText);
+        Assert.Equal(3, diagnostic.Parameters.Count);
+        Assert.Contains("300 chars", diagnostic.Parameters[0].ValuePreview, StringComparison.Ordinal);
+        Assert.Equal("<binary 12 bytes>", diagnostic.Parameters[1].ValuePreview);
+        Assert.Equal("101", diagnostic.Parameters[2].ValuePreview);
+        Assert.All(diagnostic.Parameters, parameter => Assert.False(string.IsNullOrWhiteSpace(parameter.DatabaseType)));
+    }
+
     [Fact]
     public async Task ExecuteAsync_AppliesBatchDeadlineDuringCredentialResolution()
     {

@@ -352,8 +352,8 @@ async function verifyCsvImport() {
 async function verifyActivity() {
   await clickTab(/^(Activity|活动记录)$/i);
   await page.locator(".rdm-activity-toolbar").getByRole("button", { name: /^(Refresh|刷新)$/i }).click();
-  const jobs = page.locator(".rdm-activity-box").first().locator(".rdm-activity-row");
-  const audits = page.locator(".rdm-activity-box").nth(1).locator(".rdm-activity-row");
+  const jobs = activityBox(/^(Recent jobs|最近任务)$/i).locator(".rdm-activity-row");
+  const audits = activityBox(/^(Audit log|审计日志)$/i).locator(".rdm-activity-row");
   const jobText = await jobs.allTextContents();
   const auditText = await audits.allTextContents();
   assert.ok(jobText.some(text => /CSV export|CSV 导出/i.test(text) && /Completed|已完成/i.test(text)),
@@ -427,7 +427,7 @@ async function runSql(sql, options = {}) {
 async function waitForJob(kind, terminalStatus) {
   const deadline = Date.now() + 45_000;
   while (Date.now() < deadline) {
-    const rows = page.locator(".rdm-activity-box").first().locator(".rdm-activity-row");
+    const rows = activityBox(/^(Recent jobs|最近任务)$/i).locator(".rdm-activity-row");
     const count = await rows.count();
     for (let index = 0; index < count; index += 1) {
       const row = rows.nth(index);
@@ -442,6 +442,12 @@ async function waitForJob(kind, terminalStatus) {
     await page.waitForTimeout(500);
   }
   throw new Error(`timed out waiting for ${kind} job to reach ${terminalStatus}`);
+}
+
+function activityBox(title) {
+  return page.locator(".rdm-activity-box").filter({
+    has: page.locator(".rdm-list-head", { hasText: title }),
+  });
 }
 
 async function selectTable(name) {
