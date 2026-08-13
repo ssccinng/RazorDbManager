@@ -199,8 +199,8 @@ async function createManagedTable() {
 
   await dialog.getByRole("button", { name: /^(Preview|预览)$/i }).click();
   const ddl = dialog.locator(".rdm-ddl-preview");
-  await ddl.waitFor({ state: "visible", timeout: 15_000 });
-  const ddlText = await ddl.innerText();
+  await ddl.first().waitFor({ state: "visible", timeout: 15_000 });
+  const ddlText = (await ddl.allTextContents()).join("\n");
   assert.match(ddlText, /CREATE\s+TABLE/i, "DDL preview does not create a table");
   assert.ok(ddlText.includes(tables.managed), "DDL preview targets the wrong table");
   await screenshot("01-ddl-create-preview.png");
@@ -384,8 +384,8 @@ async function dropManagedTableThroughDdl() {
   await field(dialog, /^(Operation|操作)$/i).locator("select").selectOption("DropTable");
   await dialog.getByRole("button", { name: /^(Preview|预览)$/i }).click();
   const ddl = dialog.locator(".rdm-ddl-preview");
-  await ddl.waitFor({ state: "visible", timeout: 15_000 });
-  const ddlText = await ddl.innerText();
+  await ddl.first().waitFor({ state: "visible", timeout: 15_000 });
+  const ddlText = (await ddl.allTextContents()).join("\n");
   assert.match(ddlText, /DROP\s+TABLE/i, "destructive DDL preview does not drop the table");
   assert.ok(ddlText.includes(tables.managed), "destructive DDL preview targets the wrong table");
   await dialog.locator(".rdm-confirm-box input[type='checkbox']").check();
