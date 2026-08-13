@@ -189,7 +189,8 @@ async function createManagedTable() {
   });
   await dialog.getByRole("button", { name: /^(Add column|添加列)$/i }).click();
   editors = dialog.locator(".rdm-column-editor");
-  assert.equal(await editors.count(), 2, "create-table editor did not add a second column");
+  await editors.nth(1).waitFor({ state: "visible", timeout: 10_000 });
+  assert.equal(await editors.count(), 2, "create-table editor added an unexpected number of columns");
   await configureColumn(editors.nth(1), {
     name: "name",
     type: "VarChar",
@@ -232,6 +233,10 @@ async function verifyCrud() {
   await insertRow("created-by-ui");
   await insertRow("delete-me");
   let grid = await dataGrid();
+  await page.waitForFunction(
+    () => document.querySelectorAll(".rdm-grid-wrap .rdm-grid tbody tr").length === 2,
+    undefined,
+    { timeout: 15_000 });
   assert.equal(await grid.locator("tbody tr").count(), 2, "row insert did not create two rows");
 
   let createdRow = grid.locator("tbody tr", { hasText: "created-by-ui" });
@@ -250,6 +255,10 @@ async function verifyCrud() {
   await confirmation.getByRole("button", { name: /^(Delete row|删除行)$/i }).click();
   await confirmation.waitFor({ state: "detached", timeout: 15_000 });
   grid = await dataGrid();
+  await page.waitForFunction(
+    () => document.querySelectorAll(".rdm-grid-wrap .rdm-grid tbody tr").length === 1,
+    undefined,
+    { timeout: 15_000 });
   assert.equal(await grid.locator("tbody tr").count(), 1, "row delete did not leave exactly one row");
   assert.equal(await grid.locator("tbody tr", { hasText: "delete-me" }).count(), 0,
     "deleted row is still visible");
@@ -495,9 +504,17 @@ async function dataGrid() {
 async function fillEditorField(column, value) {
   const dialog = page.locator('.rdm-drawer[role="dialog"]');
   await dialog.waitFor({ state: "visible", timeout: 10_000 });
-  const label = dialog.locator("label.rdm-field-label").filter({
-    has: dialog.locator("span", { hasText: new RegExp(`^${escapeRegex(column)}$`) }),
-  });
+  const labels = dialog.locator("label.rdm-field-label");
+  let label;
+  for (let index = 0; index < await labels.count(); index += 1) {
+    const candidate = labels.nth(index);
+    const name = compact(await candidate.locator("span").first().innerText());
+    if (name === column) {
+      label = candidate;
+      break;
+    }
+  }
+  assert.ok(label, `editor field ${column} was not found`);
   const fieldId = await label.getAttribute("for");
   assert.ok(fieldId, `editor field ${column} has no associated control`);
   await dialog.locator(`#${fieldId}`).fill(value);
