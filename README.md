@@ -7,8 +7,8 @@ Blazor Web Apps. The first provider supports MySQL and MariaDB with an
 Interactive Server UI, bounded data access, row editing, structured schema
 changes, a separately gated SQL console, streaming transfers, and audit hooks.
 
-The data workspace includes quick text search, phpMyAdmin-style per-column
-structured `WHERE` filters, sortable paging, a prominent insert workflow,
+The data workspace includes quick text search, per-column structured `WHERE`
+filters, sortable paging, a prominent insert workflow,
 selected-row CSV export, and atomic optimistic batch deletion for bounded
 InnoDB selections. The SQL console can generate quoted `SELECT`, `WHERE`,
 `INSERT`, `UPDATE`, and `DELETE` templates for the current table; generated
@@ -210,19 +210,6 @@ Set `RAZORDB_TEST_CONNECTION` to run provider integration tests against MySQL
 8.4 or MariaDB 11.8. Never use production data or credentials for tests.
 Pull requests run those two current baselines; the scheduled workflow also runs
 MySQL 9.7 and MariaDB 10.11/11.4 compatibility targets.
-
-## Scope
-
-This release targets the core phpMyAdmin workflow, not full phpMyAdmin parity.
-It intentionally excludes database-account administration, server process and
-replication management, visual schema design, stored program management,
-multi-tenancy, and native multi-instance coordination.
-
-The package uses its provider-neutral `ISqlDumpService` implementation rather
-than MySqlBackup.NET. The compatibility suite covers delimiter-aware restore,
-generated columns, binary/string literal fidelity, and cyclic foreign-key
-dumps; this keeps the dump boundary replaceable without exposing that library
-through the public API.
 
 See [SECURITY.md](SECURITY.md) before exposing the manager in any environment.
 Bundled browser dependencies are listed in

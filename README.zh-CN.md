@@ -7,8 +7,8 @@ provider 支持 MySQL 和 MariaDB，使用 Interactive Server 渲染，提供有
 数据访问、行编辑、结构化 Schema 变更、独立授权的 SQL 控制台、流式导入导出和
 审计扩展点。
 
-数据工作区包括快速文本搜索、类似 phpMyAdmin 的逐字段结构化 `WHERE` 查询、
-排序与分页、醒目的新增记录入口、选中行 CSV 导出，以及针对有限 InnoDB 行集合的
+数据工作区包括快速文本搜索、逐字段结构化 `WHERE` 查询、排序与分页、醒目的新增
+记录入口、选中行 CSV 导出，以及针对有限 InnoDB 行集合的
 原子乐观并发批量删除。SQL 控制台可以为当前表生成带正确标识符引用的 `SELECT`、
 `WHERE`、`INSERT`、`UPDATE` 和 `DELETE` 模板；生成的 `UPDATE`、`DELETE`
 默认带有 `WHERE 1 = 0`，而且不会自动执行。
@@ -182,20 +182,6 @@ dotnet test RazorDbManager.slnx -c Release --no-build
 设置 `RAZORDB_TEST_CONNECTION` 后可运行 MySQL 8.4 或 MariaDB 11.8 的真实 provider
 集成测试。请勿使用生产数据库和生产凭据执行测试。Pull Request 会运行这两个当前
 基线，定时工作流还会覆盖 MySQL 9.7 与 MariaDB 10.11/11.4。
-
-## 当前范围
-
-当前版本覆盖 phpMyAdmin 的核心工作流，但不追求全功能对等。以下能力不在当前范围：
-
-- 数据库账号和 grants 管理；
-- 服务器进程、状态和复制管理；
-- 可视化 Schema 设计器；
-- 存储过程、函数、触发器和事件管理界面；
-- 多租户和原生多实例协调。
-
-SQL dump 使用可替换的 provider-neutral `ISqlDumpService` 实现，而不是暴露
-MySqlBackup.NET。兼容性测试覆盖 delimiter-aware restore、generated columns、
-二进制/字符串保真和循环外键 dump。
 
 在任何环境暴露数据库管理器前，请阅读 [SECURITY.md](SECURITY.md)。捆绑的浏览器
 依赖记录在 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)。
