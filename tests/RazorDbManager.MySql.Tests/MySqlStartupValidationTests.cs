@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using MySqlConnector;
 using RazorDbManager.Core;
 using RazorDbManager.MySql.Configuration;
 using RazorDbManager.MySql.Infrastructure;
@@ -114,6 +115,34 @@ public sealed class MySqlStartupValidationTests
             await source.CreateDataSourceAsync(MySqlCredentialSlot.Reader));
 
         Assert.Contains("SslMode must be VerifyFull", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task CreateDataSourceAsync_EnablesUserVariablesOnlyForSqlConsole()
+    {
+        var options = new MySqlProviderOptions { ConnectionStringName = "key-vault-reader" };
+        var registration = Registration(options);
+        var credentials = new VaultCredentialProvider(_ =>
+            MySqlProviderOptionsValidatorTests.SecureConnection("app"));
+        var validator = new MySqlCredentialValidator(
+            registration,
+            options,
+            new TestEnvironment(Environments.Production));
+        var source = new MySqlCredentialSource(registration, credentials, validator);
+
+        (MySqlCredentialSlot Slot, bool Expected)[] cases =
+        [
+            (MySqlCredentialSlot.Reader, false),
+            (MySqlCredentialSlot.Writer, false),
+            (MySqlCredentialSlot.Schema, false),
+            (MySqlCredentialSlot.SqlConsole, true),
+        ];
+        foreach (var item in cases)
+        {
+            await using MySqlDataSource dataSource = await source.CreateDataSourceAsync(item.Slot);
+            var actual = new MySqlConnectionStringBuilder(dataSource.ConnectionString);
+            Assert.Equal(item.Expected, actual.AllowUserVariables);
+        }
     }
 
     [Fact]

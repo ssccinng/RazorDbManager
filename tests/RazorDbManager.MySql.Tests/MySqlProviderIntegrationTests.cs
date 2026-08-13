@@ -480,8 +480,8 @@ public sealed class MySqlProviderIntegrationTests
             var restore = await provider.Transfer.ImportAsync(
                 new ImportRequest(DatabaseId, TransferFormat.Sql),
                 dumpOutput);
-            Assert.False(restore.IsPartial);
             Assert.Empty(restore.Errors);
+            Assert.False(restore.IsPartial);
 
             await using var restoredRows = setupConnection.CreateCommand();
             restoredRows.CommandText = $"SELECT COUNT(*) FROM `{mainTable}`";

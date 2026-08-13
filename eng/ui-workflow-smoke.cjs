@@ -521,8 +521,16 @@ async function fillField(root, label, value) {
 }
 
 async function setLabeledCheckbox(root, label, checked) {
-  const wrapper = root.locator("label.rdm-check").filter({ hasText: label });
-  const checkbox = wrapper.locator('input[type="checkbox"]');
+  const wrappers = root.locator("label.rdm-check");
+  let checkbox;
+  for (let index = 0; index < await wrappers.count(); index += 1) {
+    const wrapper = wrappers.nth(index);
+    if (label.test(compact(await wrapper.innerText()))) {
+      checkbox = wrapper.locator('input[type="checkbox"]');
+      break;
+    }
+  }
+  assert.ok(checkbox, `checkbox ${label} was not found`);
   await checkbox.waitFor({ state: "visible", timeout: 5_000 });
   if (checked) await checkbox.check(); else await checkbox.uncheck();
 }

@@ -74,6 +74,7 @@ internal sealed class MySqlCredentialSource(
         connectionBuilder.UseAffectedRows = false;
         connectionBuilder.AllowLoadLocalInfile = false;
         connectionBuilder.PersistSecurityInfo = false;
+        connectionBuilder.AllowUserVariables = slot == MySqlCredentialSlot.SqlConsole;
         var builder = new MySqlDataSourceBuilder(connectionBuilder.ConnectionString);
         return builder.Build();
     }
