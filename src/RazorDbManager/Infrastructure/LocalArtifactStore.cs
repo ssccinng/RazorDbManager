@@ -95,6 +95,17 @@ internal sealed class LocalArtifactStore(LocalStorePath paths) : IRazorDbArtifac
     private string DescriptorPath(string id) => Path.Combine(paths.ArtifactRoot, id + ".json");
     private static void ValidateId(string id) { if (!IsValidId(id)) throw new RazorDbException(RazorDbErrorCode.Validation, "The artifact id is invalid."); }
     private static bool IsValidId(string id) => id.Length == 48 && id.All(Uri.IsHexDigit);
-    private static string SafeFileName(string name) { string value = Path.GetFileName(name); return string.IsNullOrWhiteSpace(value) ? "artifact.bin" : value; }
+    private static string SafeFileName(string name)
+    {
+        string input = name ?? string.Empty;
+        int separator = input.LastIndexOfAny(['/', '\\']);
+        string value = input[(separator + 1)..].Trim();
+        if (value is "" or "." or "..") return "artifact.bin";
+
+        string sanitized = string.Concat(value.Where(character =>
+            !char.IsControl(character) && character is not '<' and not '>' and not ':' and not '"'
+                and not '/' and not '\\' and not '|' and not '?' and not '*'));
+        return string.IsNullOrWhiteSpace(sanitized) ? "artifact.bin" : sanitized;
+    }
     private static void TryDelete(string path) { try { File.Delete(path); } catch (FileNotFoundException) { } }
 }

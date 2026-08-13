@@ -470,7 +470,11 @@ public sealed class MySqlProviderIntegrationTests
             string insertPrefix = $"INSERT INTO `{schema}`.`{mainTable}` (`tenant_id`, `id`, `amount`, `note`, `payload`) VALUES (";
             Assert.Equal(1, dumpText.Split(insertPrefix, StringSplitOptions.None).Length - 1);
             Assert.Contains("),(", dumpText, StringComparison.Ordinal);
-            Assert.DoesNotContain("generated_note_length", dumpText, StringComparison.Ordinal);
+            Assert.Contains("`generated_note_length`", dumpText, StringComparison.Ordinal);
+            string insertStatement = Assert.Single(
+                dumpText.Split('\n'),
+                line => line.StartsWith(insertPrefix, StringComparison.Ordinal));
+            Assert.DoesNotContain("generated_note_length", insertStatement, StringComparison.Ordinal);
 
             dumpOutput.Position = 0;
             var restore = await provider.Transfer.ImportAsync(

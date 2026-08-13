@@ -227,6 +227,17 @@ public sealed class SqliteStoreTests
             DateTimeOffset.UtcNow.AddMinutes(5)));
 
         Assert.Equal("customer.csv", write.Descriptor.FileName);
+
+        RazorDbArtifactWriteSession unixPathWrite = await store.CreateWriteAsync(new RazorDbArtifactCreateRequest(
+            "Main",
+            "alice",
+            "../../report?.csv",
+            "text/csv",
+            DateTimeOffset.UtcNow.AddMinutes(5)));
+        Assert.Equal("report.csv", unixPathWrite.Descriptor.FileName);
+        await unixPathWrite.Content.DisposeAsync();
+        await store.DeleteAsync(unixPathWrite.Descriptor.Id);
+
         Assert.Null(await store.OpenReadAsync(write.Descriptor.Id));
         await write.Content.WriteAsync(content);
         await write.Content.DisposeAsync();

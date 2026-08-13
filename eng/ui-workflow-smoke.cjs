@@ -388,6 +388,7 @@ async function dropManagedTableThroughDdl() {
 
 async function cleanupThroughSqlConsole() {
   if (!page || page.isClosed()) throw new Error("browser page is unavailable for cleanup");
+  await closeOpenModalForCleanup();
   const names = [tables.managed, tables.imported, tables.seed];
   const sql = names.map(name => `DROP TABLE IF EXISTS \`${name}\``).join("; ") + ";";
   await runSql(sql, { allowExistingError: true });
@@ -397,6 +398,14 @@ async function cleanupThroughSqlConsole() {
   await result.waitFor({ state: "visible", timeout: 30_000 });
   const value = compact(await result.locator("tbody td").first().innerText());
   assert.equal(value, "0", `cleanup left ${value} fixture tables behind`);
+}
+
+async function closeOpenModalForCleanup() {
+  const closeButton = page.locator("[data-rdm-modal-close]:visible").last();
+  if (await closeButton.count() === 0) return;
+  await page.waitForFunction(element => !element.disabled, await closeButton.elementHandle(), { timeout: 10_000 });
+  await closeButton.click();
+  await page.locator("[data-rdm-modal-close]:visible").waitFor({ state: "hidden", timeout: 10_000 });
 }
 
 async function runSql(sql, options = {}) {
@@ -502,9 +511,7 @@ async function saveRowDialog() {
 }
 
 function field(root, label) {
-  return root.locator(".rdm-field").filter({
-    has: root.locator(".rdm-field-label", { hasText: label }),
-  }).first();
+  return root.locator(".rdm-field-label", { hasText: label }).first().locator("xpath=..");
 }
 
 async function fillField(root, label, value) {
