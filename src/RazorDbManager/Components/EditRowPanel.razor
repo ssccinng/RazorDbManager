@@ -1,0 +1,122 @@
+@inject IStringLocalizer<RazorDbManager.Resources.RazorDbManagerResources> L
+
+<aside class="rdm-drawer" role="dialog" aria-modal="true" aria-label="@(IsInsert ? L["NewRow"] : L["EditRow"])" @onclick:stopPropagation="true">
+    <div class="rdm-drawer-head"><h3>@(IsInsert ? L["NewRow"] : L["EditRow"])</h3><button class="rdm-button rdm-icon-button" data-rdm-modal-close title="@L["Close"]" @onclick="OnCancel"><Icon Name="close" /></button></div>
+    <div class="rdm-drawer-body">
+        @if (!string.IsNullOrWhiteSpace(Error))
+        {
+            <div class="rdm-alert rdm-alert-error" role="alert"><Icon Name="alert" /><span class="rdm-alert-text">@Error</span></div>
+        }
+        @if (!string.IsNullOrWhiteSpace(validationError))
+        {
+            <div class="rdm-alert rdm-alert-error" role="alert"><Icon Name="alert" /><span class="rdm-alert-text">@validationError</span></div>
+        }
+        @foreach (DbColumnMetadata column in Table.Columns.Where(x => !x.IsGenerated))
+        {
+            EditorField field = fields[column.Name];
+            <div class="rdm-field">
+                <label class="rdm-field-label" for="@FieldId(column.Name)"><span>@column.Name</span><span class="rdm-field-type">@column.Type.ProviderTypeName</span></label>
+                <div class="rdm-field-controls">
+                    @if (column.Type.Kind == DbDataKind.Boolean)
+                    {
+                        <select id="@FieldId(column.Name)" class="rdm-select" @bind="field.Text"><option value="false">@L["False"]</option><option value="true">@L["True"]</option></select>
+                    }
+                    else if (column.Type.Kind is DbDataKind.Enum && column.Type.AllowedValues is { Count: > 0 } values)
+                    {
+                        <select id="@FieldId(column.Name)" class="rdm-select" @bind="field.Text">@foreach (string value in values) { <option value="@value">@value</option> }</select>
+                    }
+                    else if (column.Type.Kind is DbDataKind.Text or DbDataKind.Json && column.Type.Length is null or > 512)
+                    {
+                        <textarea id="@FieldId(column.Name)" class="rdm-textarea" @bind="field.Text"></textarea>
+                    }
+                    else if (column.Type.Kind is DbDataKind.Binary or DbDataKind.Geometry)
+                    {
+                        <input id="@FieldId(column.Name)" class="rdm-input" disabled value="@BinarySummary(field.OriginalValue, IsInsert)" />
+                    }
+                    else
+                    {
+                        <input id="@FieldId(column.Name)" class="rdm-input" @bind="field.Text" />
+                    }
+                    <label class="rdm-check"><input type="checkbox" @bind="field.IsNull" disabled="@(!column.IsNullable || column.Type.Kind is DbDataKind.Binary or DbDataKind.Geometry)" /> @L["Null"]</label>
+                </div>
+                @if (IsInsert && (column.DefaultSql is not null || column.IsAutoIncrement)) { <label class="rdm-check"><input type="checkbox" @bind="field.IsOmitted" /> @L["Omitted"]</label> }
+            </div>
+        }
+    </div>
+    <div class="rdm-drawer-footer"><button class="rdm-button" disabled="@Busy" @onclick="OnCancel">@L["Cancel"]</button><button class="rdm-button rdm-button-primary" disabled="@Busy" @onclick="SaveAsync"><Icon Name="edit" /> @L["Save"]</button></div>
+</aside>
+
+@code {
+    [Parameter, EditorRequired] public DbTableMetadata Table { get; set; } = default!;
+    [Parameter] public DbRow? Row { get; set; }
+    [Parameter] public bool IsInsert { get; set; }
+    [Parameter] public bool Busy { get; set; }
+    [Parameter] public string? Error { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter, EditorRequired] public EventCallback<IReadOnlyDictionary<string, EditValue>> OnSave { get; set; }
+
+    private readonly Dictionary<string, EditorField> fields = new(StringComparer.Ordinal);
+    private DbTableMetadata? initializedTable;
+    private DbRow? initializedRow;
+    private bool initializedInsert;
+    private string? validationError;
+
+    protected override void OnParametersSet()
+    {
+        if (ReferenceEquals(initializedTable, Table) && ReferenceEquals(initializedRow, Row) && initializedInsert == IsInsert)
+        {
+            return;
+        }
+
+        initializedTable = Table;
+        initializedRow = Row;
+        initializedInsert = IsInsert;
+        validationError = null;
+        fields.Clear();
+        for (int i = 0; i < Table.Columns.Count; i++)
+        {
+            DbColumnMetadata column = Table.Columns[i];
+            DbValue? value = Row is not null && i < Row.Values.Count ? Row.Values[i] : null;
+            fields[column.Name] = new EditorField
+            {
+                Text = value is null || value.IsNull ? string.Empty : value.Text ?? string.Empty,
+                IsNull = value?.IsNull == true,
+                IsOmitted = IsInsert && (column.IsAutoIncrement || column.DefaultSql is not null),
+                OriginalValue = value,
+            };
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        validationError = null;
+        try
+        {
+            Dictionary<string, EditValue> result = new(StringComparer.Ordinal);
+            foreach (DbColumnMetadata column in Table.Columns.Where(x => !x.IsGenerated))
+            {
+                EditorField field = fields[column.Name];
+                result[column.Name] = RowEditValueMapper.Build(column, IsInsert, field.OriginalValue, field.Text, field.IsNull, field.IsOmitted);
+            }
+            await OnSave.InvokeAsync(result);
+        }
+        catch (Exception exception) when (exception is ArgumentException or FormatException or OverflowException)
+        {
+            validationError = L["InvalidColumnValues"];
+        }
+    }
+
+    private static string FieldId(string name) => "rdm-field-" + Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(name)))[..10];
+    private string BinarySummary(DbValue? value, bool isInsert) => isInsert
+        ? L["BinaryImportOnly"]
+        : value is null or { IsNull: true }
+            ? L["NullUnchanged"]
+            : L["BinaryUnchanged", L[value.Kind.ToString()], value.Binary.Length];
+    private sealed class EditorField
+    {
+        public string Text { get; set; } = string.Empty;
+        public bool IsNull { get; set; }
+        public bool IsOmitted { get; set; }
+        public DbValue? OriginalValue { get; set; }
+    }
+}

@@ -1,0 +1,367 @@
+@inject IStringLocalizer<RazorDbManager.Resources.RazorDbManagerResources> L
+
+<aside class="rdm-drawer rdm-schema-drawer" role="dialog" aria-modal="true" aria-label="@L["SchemaChange"]" @onclick:stopPropagation="true">
+    <div class="rdm-drawer-head"><h3>@L["SchemaChange"]</h3><button class="rdm-button rdm-icon-button" data-rdm-modal-close title="@L["Close"]" disabled="@Busy" @onclick="OnCancel"><Icon Name="close" /></button></div>
+    <div class="rdm-drawer-body">
+        @if (!string.IsNullOrWhiteSpace(Error ?? validationError))
+        {
+            <div class="rdm-alert rdm-alert-error" role="alert"><Icon Name="alert" /><span class="rdm-alert-text">@(Error ?? validationError)</span></div>
+        }
+        @if (Preview is null)
+        {
+            <div class="rdm-field"><label class="rdm-field-label">@L["Operation"]</label><select class="rdm-select" @bind="operation" @bind:after="OperationChanged" disabled="@CreateOnly">@foreach (SchemaEditorOperation item in AvailableOperations) { <option value="@item">@L[item.ToString()]</option> }</select></div>
+
+            @if (operation == SchemaEditorOperation.CreateTable)
+            {
+                @TextField(L["TableName"], tableName, value => tableName = value)
+                <div class="rdm-column-list">
+                    @foreach (ColumnDraft draft in createColumns)
+                    {
+                        <div @key="draft.Id">@ColumnEditor(draft, true, createColumns.Count > 1)</div>
+                    }
+                </div>
+                <button type="button" class="rdm-button" @onclick="AddCreateColumn"><Icon Name="add" /> @L["AddColumn"]</button>
+            }
+            else if (operation == SchemaEditorOperation.RenameTable)
+            {
+                @TextField(L["NewName"], newName, value => newName = value)
+            }
+            else if (operation is SchemaEditorOperation.AddColumn or SchemaEditorOperation.AlterColumn)
+            {
+                @if (operation == SchemaEditorOperation.AlterColumn) { @ColumnSelector() }
+                @if (operation != SchemaEditorOperation.AlterColumn || alterColumnSupported)
+                {
+                    @ColumnEditor(columnDraft, false, false)
+                }
+                else
+                {
+                    <div class="rdm-alert rdm-alert-error" role="alert"><Icon Name="alert" /><span>@L["UnsupportedColumnAlterType"]</span></div>
+                }
+            }
+            else if (operation == SchemaEditorOperation.DropColumn)
+            {
+                @ColumnSelector()
+            }
+            else if (operation == SchemaEditorOperation.AddIndex)
+            {
+                @if (!indexPrimary) { @TextField(L["IndexName"], indexName, value => indexName = value) }
+                @TextField(L["ColumnList"], columnList, value => columnList = value)
+                <div class="rdm-option-row">
+                    <label class="rdm-check"><input type="checkbox" @bind="unique" disabled="@indexPrimary" /> @L["Unique"]</label>
+                    <label class="rdm-check"><input type="checkbox" @bind="indexPrimary" disabled="@Table.Indexes.Any(index => index.IsPrimary)" /> @L["PrimaryKey"]</label>
+                </div>
+            }
+            else if (operation == SchemaEditorOperation.DropIndex)
+            {
+                <div class="rdm-field"><label class="rdm-field-label">@L["Index"]</label><select class="rdm-select" @bind="selectedIndex">@foreach (DbIndexMetadata index in Table.Indexes) { <option value="@index.Name">@index.Name</option> }</select></div>
+            }
+            else if (operation == SchemaEditorOperation.AddForeignKey)
+            {
+                @TextField(L["ForeignKeyName"], foreignKeyName, value => foreignKeyName = value)
+                @TextField(L["ColumnList"], columnList, value => columnList = value)
+                @TextField(L["ReferencedSchema"], referencedSchema, value => referencedSchema = value)
+                @TextField(L["ReferencedTable"], referencedTable, value => referencedTable = value)
+                @TextField(L["ReferencedColumns"], referencedColumns, value => referencedColumns = value)
+                <div class="rdm-field-controls"><div class="rdm-field"><label class="rdm-field-label">@L["OnDelete"]</label><select class="rdm-select" @bind="onDelete">@foreach (DbReferentialAction item in SupportedReferentialActions) { <option value="@item">@L[item.ToString()]</option> }</select></div><div class="rdm-field"><label class="rdm-field-label">@L["OnUpdate"]</label><select class="rdm-select" @bind="onUpdate">@foreach (DbReferentialAction item in SupportedReferentialActions) { <option value="@item">@L[item.ToString()]</option> }</select></div></div>
+            }
+            else if (operation == SchemaEditorOperation.DropForeignKey)
+            {
+                <div class="rdm-field"><label class="rdm-field-label">@L["ForeignKey"]</label><select class="rdm-select" @bind="selectedForeignKey">@foreach (DbForeignKeyMetadata key in Table.ForeignKeys) { <option value="@key.Name">@key.Name</option> }</select></div>
+            }
+
+            @if (operation is SchemaEditorOperation.DropTable or SchemaEditorOperation.DropColumn or SchemaEditorOperation.AlterColumn or SchemaEditorOperation.DropIndex or SchemaEditorOperation.DropForeignKey)
+            {
+                <div class="rdm-alert"><Icon Name="alert" /><span>@L["DangerousOperation"]</span></div>
+            }
+        }
+        else
+        {
+            <div class="rdm-alert"><Icon Name="alert" /><span>@L["DdlImplicitCommit"]</span></div>
+            @foreach (string warning in Preview.Preview.Warnings) { <p class="rdm-context-meta">@DisplayWarning(warning)</p> }
+            @foreach (string statement in Preview.Preview.Statements) { <pre class="rdm-ddl-preview">@statement</pre> }
+            <div class="rdm-confirm-box"><label class="rdm-check"><input type="checkbox" @bind="confirmed" /> @L["ConfirmSchema"]</label><div class="rdm-context-meta">@Preview.Token.ExpiresAt.LocalDateTime.ToString("T")</div></div>
+        }
+    </div>
+    <div class="rdm-drawer-footer"><button class="rdm-button" disabled="@Busy" @onclick="OnCancel">@L["Cancel"]</button>@if (Preview is null) { <button class="rdm-button rdm-button-primary" disabled="@(Busy || operation == SchemaEditorOperation.AlterColumn && !alterColumnSupported)" @onclick="PreviewAsync"><Icon Name="view" /> @L["Preview"]</button> } else { <button class="rdm-button" disabled="@Busy" @onclick="OnBack">@L["Back"]</button><button class="rdm-button @(Preview.Preview.IsDestructive ? "rdm-button-danger" : "rdm-button-primary")" disabled="@(Busy || !confirmed)" @onclick="OnExecute"><Icon Name="execute" /> @L["Execute"]</button> }</div>
+</aside>
+
+@code {
+    [Parameter, EditorRequired] public DbTableMetadata Table { get; set; } = default!;
+    [Parameter] public bool CreateOnly { get; set; }
+    [Parameter] public WorkspaceDdlPreview? Preview { get; set; }
+    [Parameter] public bool Busy { get; set; }
+    [Parameter] public string? Error { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter] public EventCallback OnBack { get; set; }
+    [Parameter] public EventCallback<SchemaChange> OnPreview { get; set; }
+    [Parameter] public EventCallback OnExecute { get; set; }
+
+    private static readonly DbReferentialAction[] SupportedReferentialActions =
+        [DbReferentialAction.Restrict, DbReferentialAction.Cascade, DbReferentialAction.SetNull, DbReferentialAction.NoAction];
+    private SchemaEditorOperation operation;
+    private string tableName = string.Empty, newName = string.Empty, selectedColumn = string.Empty, indexName = string.Empty, selectedIndex = string.Empty, columnList = string.Empty;
+    private string foreignKeyName = string.Empty, selectedForeignKey = string.Empty, referencedSchema = string.Empty, referencedTable = string.Empty, referencedColumns = string.Empty;
+    private DbReferentialAction onDelete, onUpdate;
+    private bool unique, indexPrimary, confirmed;
+    private bool alterColumnSupported = true;
+    private readonly ColumnDraft columnDraft = ColumnDraft.Create();
+    private readonly List<ColumnDraft> createColumns = [ColumnDraft.Create()];
+    private DbTableMetadata? initializedTable;
+    private string? validationError;
+    private IEnumerable<SchemaEditorOperation> AvailableOperations => CreateOnly
+        ? [SchemaEditorOperation.CreateTable]
+        : Enum.GetValues<SchemaEditorOperation>();
+
+    protected override void OnParametersSet()
+    {
+        if (CreateOnly) operation = SchemaEditorOperation.CreateTable;
+        if (!ReferenceEquals(initializedTable, Table))
+        {
+            initializedTable = Table;
+            selectedColumn = Table.Columns.FirstOrDefault()?.Name ?? string.Empty;
+            selectedIndex = Table.Indexes.FirstOrDefault()?.Name ?? string.Empty;
+            selectedForeignKey = Table.ForeignKeys.FirstOrDefault()?.Name ?? string.Empty;
+            referencedSchema = Table.Name.Schema;
+            if (operation == SchemaEditorOperation.AlterColumn) PopulateAlterColumnDraft();
+            else if (operation == SchemaEditorOperation.AddColumn) columnDraft.Reset();
+        }
+        if (Preview is null) confirmed = false;
+    }
+
+    private async Task PreviewAsync()
+    {
+        validationError = null;
+        try
+        {
+            await OnPreview.InvokeAsync(BuildChange());
+        }
+        catch (UiValidationException exception)
+        {
+            validationError = exception.Message;
+        }
+        catch (Exception exception) when (exception is RazorDbException or InvalidOperationException or ArgumentException)
+        {
+            validationError = L["InvalidSchemaDefinition"];
+        }
+    }
+
+    private SchemaChange BuildChange() => operation switch
+    {
+        SchemaEditorOperation.CreateTable => CreateTable(),
+        SchemaEditorOperation.RenameTable => new RenameTableChange(Table.Name, Required(newName, L["NewName"])),
+        SchemaEditorOperation.DropTable => new DropTableChange(Table.Name),
+        SchemaEditorOperation.AddColumn => new AddColumnChange(Table.Name, BuildColumn(columnDraft)),
+        SchemaEditorOperation.AlterColumn => BuildAlterColumn(),
+        SchemaEditorOperation.DropColumn => new DropColumnChange(Table.Name, Required(selectedColumn, L["Column"])),
+        SchemaEditorOperation.AddIndex => new AddIndexChange(Table.Name, BuildIndex()),
+        SchemaEditorOperation.DropIndex => new DropIndexChange(Table.Name, Required(selectedIndex, L["Index"]), Table.Indexes.FirstOrDefault(index => index.Name == selectedIndex)?.IsPrimary == true),
+        SchemaEditorOperation.AddForeignKey => new AddForeignKeyChange(Table.Name, new ForeignKeyDefinition
+        {
+            Name = Required(foreignKeyName, L["ForeignKey"]),
+            Columns = SplitNames(columnList),
+            ReferencedTable = new DbObjectName(Required(referencedSchema, L["Schema"]), Required(referencedTable, L["ReferencedTable"])),
+            ReferencedColumns = SplitNames(referencedColumns),
+            OnDelete = onDelete,
+            OnUpdate = onUpdate,
+        }),
+        SchemaEditorOperation.DropForeignKey => new DropForeignKeyChange(Table.Name, Required(selectedForeignKey, L["ForeignKey"])),
+        _ => throw new InvalidOperationException(),
+    };
+
+    private SchemaChange BuildAlterColumn()
+    {
+        if (!alterColumnSupported) throw new UiValidationException(L["UnsupportedColumnAlterType"]);
+        return new AlterColumnChange(Table.Name, Required(selectedColumn, L["Column"]), BuildColumn(columnDraft));
+    }
+
+    private SchemaChange CreateTable()
+    {
+        if (createColumns.Count == 0) throw new UiValidationException(L["AtLeastOneColumn"]);
+        ColumnDefinition[] columns = createColumns.Select(draft => BuildColumn(draft, draft.PrimaryKey)).ToArray();
+        DbIndexColumn[] primaryColumns = createColumns.Where(draft => draft.PrimaryKey)
+            .Select(draft => new DbIndexColumn(Required(draft.Name, L["Column"]))).ToArray();
+        return new CreateTableChange(new TableDefinition
+        {
+            Name = new DbObjectName(Table.Name.Schema, Required(tableName, L["TableName"])),
+            Columns = columns,
+            Indexes = primaryColumns.Length == 0 ? [] : [new IndexDefinition { IsPrimary = true, IsUnique = true, Columns = primaryColumns }],
+        });
+    }
+
+    private IndexDefinition BuildIndex()
+    {
+        if (indexPrimary && Table.Indexes.Any(index => index.IsPrimary))
+            throw new UiValidationException(L["PrimaryKeyExists"]);
+        return new IndexDefinition
+        {
+            Name = indexPrimary ? string.Empty : Required(indexName, L["Index"]),
+            IsUnique = indexPrimary || unique,
+            IsPrimary = indexPrimary,
+            Columns = SplitNames(columnList).Select(name => new DbIndexColumn(name)).ToArray(),
+        };
+    }
+
+    private ColumnDefinition BuildColumn(ColumnDraft draft, bool forceNotNull = false) => new()
+    {
+        Name = Required(draft.Name, L["Column"]),
+        Type = new ColumnTypeDefinition
+        {
+            Type = draft.DataType,
+            IsUnsigned = SupportsUnsigned(draft.DataType) && draft.Unsigned,
+            Length = SupportsLength(draft.DataType) ? draft.Length : null,
+            Precision = draft.DataType == SchemaDataType.Decimal ? draft.Precision : null,
+            Scale = draft.DataType == SchemaDataType.Decimal ? draft.Scale : null,
+            AllowedValues = draft.DataType is SchemaDataType.Enum or SchemaDataType.Set ? SplitNames(draft.AllowedValues) : [],
+        },
+        IsNullable = !forceNotNull && draft.Nullable,
+        IsAutoIncrement = SupportsAutoIncrement(draft.DataType) && draft.AutoIncrement,
+        Default = BuildDefault(draft, !forceNotNull && draft.Nullable),
+        Comment = Optional(draft.Comment),
+        CharacterSet = SupportsCharacterSet(draft.DataType) ? Optional(draft.CharacterSet) : null,
+        Collation = SupportsCharacterSet(draft.DataType) ? Optional(draft.Collation) : null,
+    };
+
+    private static ColumnDefault? BuildDefault(ColumnDraft draft, bool nullable) => draft.DefaultMode switch
+    {
+        ColumnDefaultMode.Null when nullable => new NullColumnDefault(),
+        ColumnDefaultMode.Literal when SupportsLiteralDefault(draft.DataType) => new LiteralColumnDefault(ParseLiteral(draft.DataType, draft.DefaultValue)),
+        ColumnDefaultMode.CurrentTimestamp when SupportsCurrentTimestamp(draft.DataType) => new CurrentTimestampColumnDefault(draft.CurrentTimestampPrecision),
+        _ => null,
+    };
+
+    private static DbValue ParseLiteral(SchemaDataType type, string value) => type switch
+    {
+        SchemaDataType.Int8 or SchemaDataType.Int16 or SchemaDataType.Int32 or SchemaDataType.Int64 => DbValue.FromText(DbValueKind.SignedInteger, value),
+        SchemaDataType.Decimal => DbValue.FromText(DbValueKind.Decimal, value),
+        SchemaDataType.Float or SchemaDataType.Double => DbValue.FromText(DbValueKind.FloatingPoint, value),
+        SchemaDataType.Boolean => DbValue.FromText(DbValueKind.Boolean, value.Equals("true", StringComparison.OrdinalIgnoreCase) || value == "1" ? "true" : "false"),
+        SchemaDataType.Date => DbValue.FromText(DbValueKind.Date, value),
+        SchemaDataType.Time => DbValue.FromText(DbValueKind.Time, value),
+        SchemaDataType.DateTime => DbValue.FromText(DbValueKind.DateTime, value),
+        SchemaDataType.Timestamp => DbValue.FromText(DbValueKind.Timestamp, value),
+        SchemaDataType.Enum => DbValue.FromText(DbValueKind.Enum, value),
+        SchemaDataType.Set => DbValue.FromText(DbValueKind.Set, value),
+        SchemaDataType.Guid => DbValue.FromText(DbValueKind.Guid, value),
+        _ => DbValue.FromString(value),
+    };
+
+    private RenderFragment ColumnEditor(ColumnDraft draft, bool showPrimary, bool allowRemove) => @<div class="rdm-column-editor">
+        <div class="rdm-column-editor-head"><strong>@L["Column"]</strong>@if (allowRemove) { <button type="button" class="rdm-button rdm-icon-button rdm-button-danger" title="@L["RemoveColumn"]" @onclick="() => RemoveCreateColumn(draft)"><Icon Name="delete" /></button> }</div>
+        @TextField(L["ColumnName"], draft.Name, value => draft.Name = value)
+        <div class="rdm-field"><label class="rdm-field-label">@L["Type"]</label><select class="rdm-select" @bind="draft.DataType">@foreach (SchemaDataType item in Enum.GetValues<SchemaDataType>()) { <option value="@item">@item</option> }</select></div>
+        @if (SupportsLength(draft.DataType)) { <div class="rdm-field"><label class="rdm-field-label">@L["Length"]</label><input class="rdm-input" type="number" min="1" @bind="draft.Length" /></div> }
+        @if (draft.DataType == SchemaDataType.Decimal) { <div class="rdm-field-controls"><div class="rdm-field"><label class="rdm-field-label">@L["Precision"]</label><input class="rdm-input" type="number" min="1" max="65" @bind="draft.Precision" /></div><div class="rdm-field"><label class="rdm-field-label">@L["Scale"]</label><input class="rdm-input" type="number" min="0" max="30" @bind="draft.Scale" /></div></div> }
+        @if (draft.DataType is SchemaDataType.Enum or SchemaDataType.Set) { @TextField(L["AllowedValues"], draft.AllowedValues, value => draft.AllowedValues = value) }
+        <div class="rdm-option-row">
+            <label class="rdm-check"><input type="checkbox" @bind="draft.Nullable" /> @L["Nullable"]</label>
+            @if (SupportsUnsigned(draft.DataType)) { <label class="rdm-check"><input type="checkbox" @bind="draft.Unsigned" /> @L["Unsigned"]</label> }
+            @if (SupportsAutoIncrement(draft.DataType)) { <label class="rdm-check"><input type="checkbox" @bind="draft.AutoIncrement" /> @L["AutoIncrement"]</label> }
+            @if (showPrimary) { <label class="rdm-check"><input type="checkbox" @bind="draft.PrimaryKey" /> @L["PrimaryKey"]</label> }
+        </div>
+        <div class="rdm-field"><label class="rdm-field-label">@L["Default"]</label><select class="rdm-select" @bind="draft.DefaultMode"><option value="@ColumnDefaultMode.None">@L["None"]</option>@if (draft.Nullable) { <option value="@ColumnDefaultMode.Null">NULL</option> }@if (SupportsLiteralDefault(draft.DataType)) { <option value="@ColumnDefaultMode.Literal">@L["Literal"]</option> }@if (SupportsCurrentTimestamp(draft.DataType)) { <option value="@ColumnDefaultMode.CurrentTimestamp">CURRENT_TIMESTAMP</option> }</select></div>
+        @if (draft.DefaultMode == ColumnDefaultMode.Literal && SupportsLiteralDefault(draft.DataType)) { @TextField(L["DefaultValue"], draft.DefaultValue, value => draft.DefaultValue = value) }
+        @TextField(L["Comment"], draft.Comment, value => draft.Comment = value)
+        @if (SupportsCharacterSet(draft.DataType))
+        {
+            <div class="rdm-field-controls">@TextField(L["CharacterSet"], draft.CharacterSet, value => draft.CharacterSet = value)@TextField(L["Collation"], draft.Collation, value => draft.Collation = value)</div>
+        }
+    </div>;
+
+    private void AddCreateColumn() => createColumns.Add(ColumnDraft.Create());
+    private void RemoveCreateColumn(ColumnDraft draft) { if (createColumns.Count > 1) createColumns.Remove(draft); }
+    private RenderFragment TextField(string label, string value, Action<string> setter) => @<div class="rdm-field"><label class="rdm-field-label">@label</label><input class="rdm-input" value="@value" @oninput="args => setter(args.Value?.ToString() ?? string.Empty)" /></div>;
+    private RenderFragment ColumnSelector() => @<div class="rdm-field"><label class="rdm-field-label">@L["Column"]</label><select class="rdm-select" @bind="selectedColumn" @bind:after="SelectedColumnChanged">@foreach (DbColumnMetadata column in Table.Columns) { <option value="@column.Name">@column.Name</option> }</select></div>;
+
+    private void OperationChanged()
+    {
+        validationError = null;
+        if (operation == SchemaEditorOperation.AlterColumn) PopulateAlterColumnDraft();
+        else if (operation == SchemaEditorOperation.AddColumn)
+        {
+            alterColumnSupported = true;
+            columnDraft.Reset();
+        }
+    }
+
+    private void SelectedColumnChanged()
+    {
+        validationError = null;
+        if (operation == SchemaEditorOperation.AlterColumn) PopulateAlterColumnDraft();
+    }
+
+    private void PopulateAlterColumnDraft()
+    {
+        DbColumnMetadata? column = Table.Columns.FirstOrDefault(item => item.Name == selectedColumn);
+        SchemaColumnDraftSeed? seed = null;
+        alterColumnSupported = column is not null && SchemaColumnDraftMapper.TryCreate(column, out seed);
+        if (alterColumnSupported) columnDraft.Apply(seed!);
+    }
+
+    private static bool SupportsLength(SchemaDataType type) => type is SchemaDataType.Char or SchemaDataType.VarChar or SchemaDataType.Binary or SchemaDataType.VarBinary or SchemaDataType.Bit;
+    private static bool SupportsUnsigned(SchemaDataType type) => type is SchemaDataType.Int8 or SchemaDataType.Int16 or SchemaDataType.Int32 or SchemaDataType.Int64 or SchemaDataType.Decimal;
+    private static bool SupportsAutoIncrement(SchemaDataType type) => type is SchemaDataType.Int8 or SchemaDataType.Int16 or SchemaDataType.Int32 or SchemaDataType.Int64;
+    private static bool SupportsCurrentTimestamp(SchemaDataType type) => type is SchemaDataType.DateTime or SchemaDataType.Timestamp;
+    private static bool SupportsCharacterSet(SchemaDataType type) => type is SchemaDataType.Char or SchemaDataType.VarChar or SchemaDataType.Text or SchemaDataType.Enum or SchemaDataType.Set;
+    private static bool SupportsLiteralDefault(SchemaDataType type) => type is not (SchemaDataType.Binary or SchemaDataType.VarBinary or SchemaDataType.Blob or SchemaDataType.Geometry or SchemaDataType.Json or SchemaDataType.Text);
+    private string Required(string value, string field) => !string.IsNullOrWhiteSpace(value) ? value.Trim() : throw new UiValidationException(L["RequiredField", field]);
+    private static string? Optional(string value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    private string[] SplitNames(string value) { string[] names = value.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries); return names.Length > 0 ? names : throw new UiValidationException(L["AtLeastOneValue"]); }
+    private string DisplayWarning(string warning) => warning.Contains("implicitly commit", StringComparison.OrdinalIgnoreCase)
+        ? L["DdlImplicitCommit"]
+        : L["SchemaWarning"];
+
+    private sealed class ColumnDraft
+    {
+        public Guid Id { get; } = Guid.NewGuid();
+        public string Name { get; set; } = string.Empty;
+        public SchemaDataType DataType { get; set; } = SchemaDataType.VarChar;
+        public long? Length { get; set; } = 255;
+        public int? Precision { get; set; } = 18;
+        public int? Scale { get; set; } = 2;
+        public bool Nullable { get; set; } = true;
+        public bool Unsigned { get; set; }
+        public bool AutoIncrement { get; set; }
+        public bool PrimaryKey { get; set; }
+        public string AllowedValues { get; set; } = string.Empty;
+        public ColumnDefaultMode DefaultMode { get; set; }
+        public string DefaultValue { get; set; } = string.Empty;
+        public int? CurrentTimestampPrecision { get; set; }
+        public string Comment { get; set; } = string.Empty;
+        public string CharacterSet { get; set; } = string.Empty;
+        public string Collation { get; set; } = string.Empty;
+        public static ColumnDraft Create() => new();
+
+        public void Reset() => Apply(new SchemaColumnDraftSeed(
+            string.Empty, SchemaDataType.VarChar, 255, 18, 2, true, false, false, string.Empty,
+            SchemaColumnSeedDefaultKind.None, string.Empty, null, string.Empty, string.Empty, string.Empty));
+
+        public void Apply(SchemaColumnDraftSeed seed)
+        {
+            Name = seed.Name;
+            DataType = seed.DataType;
+            Length = seed.Length;
+            Precision = seed.Precision;
+            Scale = seed.Scale;
+            Nullable = seed.Nullable;
+            Unsigned = seed.Unsigned;
+            AutoIncrement = seed.AutoIncrement;
+            PrimaryKey = false;
+            AllowedValues = seed.AllowedValues;
+            DefaultMode = seed.DefaultKind switch
+            {
+                SchemaColumnSeedDefaultKind.Literal => ColumnDefaultMode.Literal,
+                SchemaColumnSeedDefaultKind.CurrentTimestamp => ColumnDefaultMode.CurrentTimestamp,
+                _ => ColumnDefaultMode.None,
+            };
+            DefaultValue = seed.DefaultValue;
+            CurrentTimestampPrecision = seed.CurrentTimestampPrecision;
+            Comment = seed.Comment;
+            CharacterSet = seed.CharacterSet;
+            Collation = seed.Collation;
+        }
+    }
+
+    private enum ColumnDefaultMode { None, Null, Literal, CurrentTimestamp }
+    private enum SchemaEditorOperation { CreateTable, RenameTable, DropTable, AddColumn, AlterColumn, DropColumn, AddIndex, DropIndex, AddForeignKey, DropForeignKey }
+    private sealed class UiValidationException(string message) : Exception(message);
+}

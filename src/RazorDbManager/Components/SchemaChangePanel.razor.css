@@ -1,0 +1,31 @@
+.rdm-schema-drawer {
+    width: min(620px, 96vw);
+}
+
+.rdm-column-list {
+    display: grid;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.rdm-column-editor {
+    border: 1px solid var(--rdm-border);
+    background: var(--rdm-surface-subtle);
+    padding: 12px;
+}
+
+.rdm-column-editor-head {
+    min-height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.rdm-option-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    margin: 2px 0 13px;
+}

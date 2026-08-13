@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <DefaultItemExcludes>$(DefaultItemExcludes);$(MSBuildProjectDirectory)/bin/**;$(MSBuildProjectDirectory)/obj/**</DefaultItemExcludes>
+    <RazorDbManagerPackageVersion Condition="'$(RazorDbManagerPackageVersion)' == ''">1.0.0</RazorDbManagerPackageVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="RazorDbManager.MySql" Version="$(RazorDbManagerPackageVersion)" />
+  </ItemGroup>
+
+</Project>

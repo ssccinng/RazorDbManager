@@ -1,0 +1,238 @@
+name: ci
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ "*" ]
+  pull_request:
+  release:
+    types: [ published ]
+  workflow_dispatch:
+  schedule:
+    - cron: '17 3 * * *'
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: |
+            Directory.Packages.props
+            NuGet.Config
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: eng/codemirror/package-lock.json
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+        working-directory: eng/codemirror
+      - run: npm run build
+        working-directory: eng/codemirror
+      - run: git diff --exit-code -- src/RazorDbManager/wwwroot/razordbmanager.js
+      - run: dotnet restore RazorDbManager.slnx --configfile NuGet.Config
+      - run: dotnet build RazorDbManager.slnx -c Release --no-restore
+      - run: dotnet test RazorDbManager.slnx -c Release --no-build --logger trx --results-directory TestResults
+      - run: dotnet pack src/RazorDbManager.Core -c Release --no-build --no-restore --output artifacts/packages
+      - run: dotnet pack src/RazorDbManager -c Release --no-build --no-restore --output artifacts/packages
+      - run: dotnet pack src/RazorDbManager.MySql -c Release --no-build --no-restore --output artifacts/packages
+      - shell: pwsh
+        run: ./eng/package-smoke/Verify-Packages.ps1
+      - shell: pwsh
+        run: ./eng/package-smoke/Test-PackageConsumer.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nuget-packages-${{ github.sha }}
+          path: artifacts/packages/*.nupkg
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: TestResults
+
+  provider-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - engine: mysql
+            image: mysql:8.4
+          - engine: mariadb
+            image: mariadb:11.8
+    services:
+      database:
+        image: ${{ matrix.image }}
+        env:
+          MYSQL_ROOT_PASSWORD: test-password
+          MYSQL_DATABASE: razordbmanager_tests
+          MARIADB_ROOT_PASSWORD: test-password
+          MARIADB_DATABASE: razordbmanager_tests
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -ptest-password"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - run: dotnet restore RazorDbManager.slnx --configfile NuGet.Config
+      - run: dotnet test tests/RazorDbManager.MySql.Tests -c Release --no-restore --filter Category=Integration
+        env:
+          RAZORDB_TEST_CONNECTION: Server=127.0.0.1;Port=3306;Database=razordbmanager_tests;User ID=root;Password=test-password;SslMode=None;AllowLoadLocalInfile=false
+          RAZORDB_TEST_ENGINE: ${{ matrix.engine }}
+
+  browser-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      UI_WORKFLOW_PREFIX: rdm_e2e_${{ github.run_id }}_${{ github.run_attempt }}
+    services:
+      database:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: test-password
+          MYSQL_DATABASE: razordbmanager_sample
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -ptest-password"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: eng/browser-smoke/package-lock.json
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+        working-directory: eng/browser-smoke
+      - run: npx playwright install --with-deps chromium
+        working-directory: eng/browser-smoke
+      - run: dotnet restore RazorDbManager.slnx --configfile NuGet.Config
+      - run: dotnet build samples/RazorDbManager.Sample -c Release --no-restore
+      - name: Seed browser fixture
+        shell: bash
+        run: |
+          seed_table="${UI_WORKFLOW_PREFIX}_seed"
+          import_table="${UI_WORKFLOW_PREFIX}_import"
+          docker exec "${{ job.services.database.id }}" mysql -uroot -ptest-password razordbmanager_sample \
+            -e "CREATE TABLE \`${seed_table}\` (id INT PRIMARY KEY, name VARCHAR(64) NOT NULL) ENGINE=InnoDB;
+                INSERT INTO \`${seed_table}\` VALUES (1, 'alpha'), (2, 'beta');
+                CREATE TABLE \`${import_table}\` (id INT PRIMARY KEY, name VARCHAR(64) NOT NULL) ENGINE=InnoDB;"
+      - name: Start sample
+        shell: bash
+        env:
+          ASPNETCORE_ENVIRONMENT: Development
+          ASPNETCORE_URLS: http://127.0.0.1:5173
+          ConnectionStrings__MainDatabase: Server=127.0.0.1;Port=3306;Database=razordbmanager_sample;User ID=root;Password=test-password;SslMode=None;PersistSecurityInfo=false;AllowLoadLocalInfile=false
+          RazorDbManagerSample__AllowInsecureDevelopmentConnection: true
+          RazorDbManagerSample__EnableDataEditing: true
+          RazorDbManagerSample__EnableImport: true
+          RazorDbManagerSample__EnableExport: true
+          RazorDbManagerSample__EnableSchemaChanges: true
+          RazorDbManagerSample__EnableDestructiveSchemaChanges: true
+          RazorDbManagerSample__EnableSqlConsole: true
+          RazorDbManagerSample__AllowSharedHighRiskCredential: true
+        run: |
+          dotnet run --project samples/RazorDbManager.Sample -c Release --no-build --no-launch-profile > browser-sample.log 2>&1 &
+          echo $! > browser-sample.pid
+          for attempt in {1..60}; do
+            curl --fail --silent http://127.0.0.1:5173/db-manager >/dev/null && exit 0
+            sleep 1
+          done
+          cat browser-sample.log
+          exit 1
+      - name: Run browser smoke
+        env:
+          PLAYWRIGHT_MODULE_PATH: ${{ github.workspace }}/eng/browser-smoke/node_modules
+        run: node eng/browser-smoke.cjs http://127.0.0.1:5173
+      - name: Run mutable UI release gate
+        if: always()
+        env:
+          PLAYWRIGHT_MODULE_PATH: ${{ github.workspace }}/eng/browser-smoke/node_modules
+        run: node eng/ui-workflow-smoke.cjs http://127.0.0.1:5173
+      - name: Clean browser fixtures
+        if: always()
+        shell: bash
+        run: |
+          seed_table="${UI_WORKFLOW_PREFIX}_seed"
+          import_table="${UI_WORKFLOW_PREFIX}_import"
+          managed_table="${UI_WORKFLOW_PREFIX}_managed"
+          docker exec "${{ job.services.database.id }}" mysql -uroot -ptest-password razordbmanager_sample \
+            -e "DROP TABLE IF EXISTS \`${managed_table}\`, \`${import_table}\`, \`${seed_table}\`;"
+      - name: Stop sample
+        if: always()
+        shell: bash
+        run: test ! -f browser-sample.pid || kill $(cat browser-sample.pid) || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: browser-release-gate
+          if-no-files-found: warn
+          path: |
+            artifacts/browser-smoke
+            artifacts/ui-workflow-smoke
+            browser-sample.log
+
+  provider-integration-extended:
+    if: >-
+      github.event_name == 'schedule' ||
+      github.event_name == 'release' ||
+      github.event_name == 'workflow_dispatch' ||
+      startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - engine: mysql
+            image: mysql:9.7
+          - engine: mariadb
+            image: mariadb:10.11
+          - engine: mariadb
+            image: mariadb:11.4
+    services:
+      database:
+        image: ${{ matrix.image }}
+        env:
+          MYSQL_ROOT_PASSWORD: test-password
+          MYSQL_DATABASE: razordbmanager_tests
+          MARIADB_ROOT_PASSWORD: test-password
+          MARIADB_DATABASE: razordbmanager_tests
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -ptest-password"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - run: dotnet restore RazorDbManager.slnx --configfile NuGet.Config
+      - run: dotnet test tests/RazorDbManager.MySql.Tests -c Release --no-restore --filter Category=Integration
+        env:
+          RAZORDB_TEST_CONNECTION: Server=127.0.0.1;Port=3306;Database=razordbmanager_tests;User ID=root;Password=test-password;SslMode=None;AllowLoadLocalInfile=false
+          RAZORDB_TEST_ENGINE: ${{ matrix.engine }}

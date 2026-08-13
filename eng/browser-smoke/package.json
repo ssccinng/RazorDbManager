@@ -1,0 +1,11 @@
+{
+  "name": "razordbmanager-browser-smoke",
+  "private": true,
+  "scripts": {
+    "install-browser": "playwright install chromium",
+    "smoke": "node ../browser-smoke.cjs"
+  },
+  "devDependencies": {
+    "playwright": "1.62.0"
+  }
+}

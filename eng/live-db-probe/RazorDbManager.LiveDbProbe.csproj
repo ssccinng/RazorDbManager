@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>RazorDbManager.Sample-7d82a3e8-ef6e-4f52-a59f-c152ea0ebeb2</UserSecretsId>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <ProjectReference Include="..\..\src\RazorDbManager.Core\RazorDbManager.Core.csproj" />
+    <ProjectReference Include="..\..\src\RazorDbManager\RazorDbManager.csproj" />
+    <ProjectReference Include="..\..\src\RazorDbManager.MySql\RazorDbManager.MySql.csproj" />
+  </ItemGroup>
+</Project>

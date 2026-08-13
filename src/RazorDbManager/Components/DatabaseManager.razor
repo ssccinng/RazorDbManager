@@ -1,0 +1,1462 @@
+@implements IAsyncDisposable
+@inject DatabaseWorkspace Workspace
+@inject IStringLocalizer<RazorDbManager.Resources.RazorDbManagerResources> L
+@inject IJSRuntime JS
+@inject AuthenticationStateProvider AuthenticationState
+@inject RazorDbComponentScopeProtector ComponentScopes
+
+<div class="rdm-shell @Class" @attributes="AdditionalAttributes">
+    <header class="rdm-topbar">
+        <button class="rdm-button rdm-icon-button rdm-mobile-tree" title="@L["Tables"]" @onclick="OpenMobileTree">
+            <Icon Name="menu" />
+        </button>
+        <div class="rdm-brand">
+            <span class="rdm-brand-mark"><Icon Name="database" Size="22" /></span>
+            <div class="rdm-brand-copy">
+                <div class="rdm-brand-title">@L["ProductName"]</div>
+                <div class="rdm-brand-subtitle">@database?.ProductName @database?.ProductVersion</div>
+            </div>
+        </div>
+        <div class="rdm-top-spacer"></div>
+        @if (database is not null)
+        {
+            <span class="rdm-status"><span class="rdm-status-dot"></span><span class="rdm-status-label">@L["Connected"]</span></span>
+        }
+        @if (IsReadOnly)
+        {
+            <span class="rdm-badge">@L["ReadOnly"]</span>
+        }
+    </header>
+
+    <aside class="rdm-sidebar">
+        @ObjectTree()
+    </aside>
+
+    <main class="rdm-main">
+        <div class="rdm-context">
+            <div class="rdm-context-copy">
+                <h2>@(selectedTable?.Name.ToString() ?? registrationName ?? DatabaseId)</h2>
+                <div class="rdm-context-meta">@ContextMetadata</div>
+            </div>
+            <div class="rdm-context-actions">
+                <button class="rdm-button rdm-icon-button" title="@L["Refresh"]" disabled="@busy" @onclick="RefreshAsync"><Icon Name="refresh" /></button>
+            </div>
+        </div>
+
+        <nav class="rdm-tabs" role="tablist" aria-label="@L["WorkspaceLabel"]">
+            @TabButton(WorkspaceTab.Data, "table", L["Data"], false)
+            @TabButton(WorkspaceTab.Structure, "columns", L["Structure"], false)
+            @TabButton(WorkspaceTab.Sql, "terminal", L["Sql"], ReadOnly || !Has(RazorDbCapability.ExecuteSql))
+            @TabButton(WorkspaceTab.Transfer, "transfer", L["Transfer"], ReadOnly || !Has(RazorDbCapability.Import | RazorDbCapability.Export, any: true))
+            @TabButton(WorkspaceTab.Activity, "history", L["Activity"], false)
+        </nav>
+
+        @if (!string.IsNullOrWhiteSpace(error))
+        {
+            <div class="rdm-alert rdm-alert-error" role="alert">
+                <Icon Name="alert" />
+                <span class="rdm-alert-text">@error</span>
+                <button class="rdm-button rdm-icon-button" title="@L["Dismiss"]" @onclick="() => error = null"><Icon Name="close" /></button>
+            </div>
+        }
+
+        @foreach (WorkspaceTab tab in WorkspaceTabNavigation.Order)
+        {
+            <section class="rdm-panel" role="tabpanel" id="@PanelId(tab)" aria-labelledby="@TabId(tab)" tabindex="0" hidden="@(activeTab != tab)">
+                @if (activeTab == tab)
+                {
+                    @if (loading)
+                    {
+                        <div class="rdm-loading"><div class="rdm-loading-inner"><div class="rdm-spinner"></div><div>@L["Loading"]</div></div></div>
+                    }
+                    else if (database is null)
+                    {
+                        <EmptyState IconName="database" Title="@L["Unavailable"]" Description="@error" />
+                    }
+                    else
+                    {
+                        @switch (tab)
+                        {
+                            case WorkspaceTab.Data:
+                                @DataPanel()
+                                break;
+                            case WorkspaceTab.Structure:
+                                @StructurePanel()
+                                break;
+                            case WorkspaceTab.Sql:
+                                @SqlPanel()
+                                break;
+                            case WorkspaceTab.Transfer:
+                                @TransferPanel()
+                                break;
+                            case WorkspaceTab.Activity:
+                                @ActivityPanel()
+                                break;
+                        }
+                    }
+                }
+            </section>
+        }
+    </main>
+@if (mobileTreeOpen)
+{
+    <div class="rdm-scrim" @ref="mobileTreeModal" @onclick="CloseMobileTreeAsync">
+        <aside class="rdm-drawer" role="dialog" aria-modal="true" aria-label="@L["Tables"]" @onclick:stopPropagation="true">
+            <div class="rdm-drawer-head"><strong>@L["Tables"]</strong><button class="rdm-button rdm-icon-button" data-rdm-modal-close title="@L["Close"]" @onclick="CloseMobileTreeAsync"><Icon Name="close" /></button></div>
+            @ObjectTree()
+        </aside>
+    </div>
+}
+
+@if (editorOpen && selectedTable is not null)
+{
+    <div class="rdm-scrim" @ref="rowEditorModal" @onclick="CloseEditorAsync">
+        <EditRowPanel Table="selectedTable" Row="editingRow" IsInsert="@(editingRow is null)" Busy="@busy" Error="@editorError" OnCancel="CloseEditorAsync" OnSave="SaveRowAsync" />
+    </div>
+}
+
+@if (schemaEditorOpen && schemaEditorTable is not null)
+{
+    <div class="rdm-scrim" @ref="schemaEditorModal" @onclick="CloseSchemaEditorAsync">
+        <SchemaChangePanel Table="schemaEditorTable" CreateOnly="@(selectedTable is null)" Preview="ddlPreview" Busy="busy" Error="@schemaError" OnCancel="CloseSchemaEditorAsync" OnBack="ClearDdlPreview" OnPreview="PreviewSchemaAsync" OnExecute="ExecuteSchemaAsync" />
+    </div>
+}
+
+@if (deletingRow is not null || deletingRows.Count > 0)
+{
+    <div class="rdm-scrim rdm-confirm-scrim" @ref="deleteModal" @onclick="CancelDeleteAsync">
+        <div class="rdm-delete-dialog" role="alertdialog" aria-modal="true" aria-labelledby="rdm-delete-title" @onclick:stopPropagation="true">
+            <div class="rdm-drawer-head"><h3 id="rdm-delete-title">@L[deletingRows.Count > 0 ? "DeleteSelected" : "DeleteRow"]</h3><button class="rdm-button rdm-icon-button" data-rdm-modal-close title="@L["Close"]" disabled="@busy" @onclick="CancelDeleteAsync"><Icon Name="close" /></button></div>
+            <div class="rdm-delete-body">
+                <div class="rdm-alert"><Icon Name="alert" /><span>@(deletingRows.Count > 0 ? L["ConfirmBatchDelete", deletingRows.Count] : L["ConfirmDelete"])</span></div>
+                @if (!string.IsNullOrWhiteSpace(deleteError))
+                {
+                    <div class="rdm-alert rdm-alert-error" role="alert"><Icon Name="alert" /><span class="rdm-alert-text">@deleteError</span></div>
+                }
+            </div>
+            <div class="rdm-drawer-footer"><button class="rdm-button" disabled="@busy" @onclick="CancelDeleteAsync">@L["Cancel"]</button><button class="rdm-button rdm-button-danger" disabled="@busy" @onclick="ConfirmDeleteAsync"><Icon Name="delete" /> @L[deletingRows.Count > 0 ? "DeleteSelected" : "DeleteRow"]</button></div>
+        </div>
+    </div>
+}
+</div>
+
+@code {
+    /// <summary>Gets or sets the server-registered database identifier.</summary>
+    [Parameter, EditorRequired] public string DatabaseId { get; set; } = string.Empty;
+
+    /// <summary>Restricts this component instance to read-only behavior.</summary>
+    [Parameter] public bool ReadOnly { get; set; }
+
+    /// <summary>Gets or sets additional component CSS classes.</summary>
+    [Parameter] public string? Class { get; set; }
+
+    /// <summary>Gets unmatched attributes applied to the component root.</summary>
+    [Parameter(CaptureUnmatchedValues = true)] public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private CancellationTokenSource lifetime = new();
+    private CancellationTokenSource? sqlExecution;
+    private CancellationTokenSource? activityPolling;
+    private CancellationTokenSource? componentScopeRefresh;
+    private IJSObjectReference? browserModule;
+    private IJSObjectReference? accessibilityModule;
+    private IJSObjectReference? modalSession;
+    private ElementReference mobileTreeModal;
+    private ElementReference rowEditorModal;
+    private ElementReference schemaEditorModal;
+    private ElementReference deleteModal;
+    private ModalKind? pendingModal;
+    private readonly string componentId = "rdm-" + Guid.NewGuid().ToString("N");
+    private DatabaseMetadata? database;
+    private DbObjectSummary? selectedObject;
+    private DbTableMetadata? selectedTable;
+    private DbTableMetadata? schemaEditorTable;
+    private RowPage? rowPage;
+    private SqlExecutionResult? sqlResult;
+    private IReadOnlyList<RazorDbJobRecord> jobs = Array.Empty<RazorDbJobRecord>();
+    private IReadOnlyList<RazorDbAuditRecord> audit = Array.Empty<RazorDbAuditRecord>();
+    private WorkspaceTab activeTab;
+    private DbRow? editingRow;
+    private DbRow? deletingRow;
+    private readonly List<DbRow> deletingRows = [];
+    private readonly HashSet<DbRow> selectedRows = new(ReferenceEqualityComparer.Instance);
+    private bool editorOpen;
+    private bool schemaEditorOpen;
+    private bool loading = true;
+    private bool busy;
+    private bool activityLoading;
+    private bool mobileTreeOpen;
+    private string? error;
+    private string? editorError;
+    private string? deleteError;
+    private string? schemaError;
+    private string? registrationName;
+    private string objectSearch = string.Empty;
+    private readonly List<FilterDraft> filterDrafts = [new()];
+    private DbLogicalOperator filterLogicalOperator = DbLogicalOperator.And;
+    private string quickSearchColumn = string.Empty;
+    private string quickSearchValue = string.Empty;
+    private string? sortColumn;
+    private DbSortDirection? sortDirection;
+    private FilterExpression? appliedFilter;
+    private IReadOnlyList<DbSort> appliedSorts = [];
+    private bool includeTotalCount;
+    private string sql = string.Empty;
+    private bool importHasHeader = true;
+    private string importDelimiter = ",";
+    private string importNullToken = "\\N";
+    private bool importContinueOnError;
+    private bool importDecodeProtectedValues;
+    private bool exportIncludeSchema = true;
+    private bool exportIncludeData = true;
+    private bool exportCompressWithGzip;
+    private readonly CursorPageNavigation pageNavigation = new();
+    private int pageSize = 100;
+    private readonly string uploadTarget = "rdm-upload-" + Guid.NewGuid().ToString("N");
+    private SchemaChange? pendingSchemaChange;
+    private WorkspaceDdlPreview? ddlPreview;
+    private string? loadedDatabaseId;
+    private string? componentScopeToken;
+
+    private bool IsReadOnly => ReadOnly || !Has(RazorDbCapability.InsertRows | RazorDbCapability.UpdateRows
+        | RazorDbCapability.DeleteRows | RazorDbCapability.ModifySchema | RazorDbCapability.ExecuteSql
+        | RazorDbCapability.Import, any: true);
+
+    private string ContextMetadata => selectedTable is null
+        ? L["SchemasCount", database?.Schemas.Count ?? 0]
+        : $"{DisplayObjectKind(selectedTable.Kind)} · {selectedTable.Engine ?? "-"} · {selectedTable.Columns.Count} {L["Columns"]}";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        StopActivityPolling();
+        lifetime.Cancel();
+        lifetime.Dispose();
+        lifetime = new CancellationTokenSource();
+        if (!string.Equals(loadedDatabaseId, DatabaseId, StringComparison.Ordinal))
+        {
+            await ResetDatabaseStateAsync();
+            loadedDatabaseId = DatabaseId;
+        }
+        NormalizeActiveTab();
+        await RefreshComponentScopeAsync();
+        StartComponentScopeRefresh();
+        await LoadDatabaseAsync(false);
+        NormalizeActiveTab();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (pendingModal is not ModalKind modal) return;
+        pendingModal = null;
+        ElementReference element = modal switch
+        {
+            ModalKind.MobileTree => mobileTreeModal,
+            ModalKind.RowEditor => rowEditorModal,
+            ModalKind.SchemaEditor => schemaEditorModal,
+            ModalKind.Delete => deleteModal,
+            _ => default,
+        };
+
+        try
+        {
+            accessibilityModule ??= await JS.InvokeAsync<IJSObjectReference>("import", "./_content/RazorDbManager/razordbmanager-accessibility.js");
+            modalSession = await accessibilityModule.InvokeAsync<IJSObjectReference>("activateModal", element);
+        }
+        catch (JSException) { }
+    }
+
+    private async Task LoadDatabaseAsync(bool refresh)
+    {
+        loading = true;
+        error = null;
+        try
+        {
+            WorkspaceDatabase loaded = await Workspace.LoadDatabaseAsync(DatabaseId, refresh, lifetime.Token);
+            database = loaded.Metadata;
+            registrationName = loaded.DisplayName;
+            RazorDbResourceLimits limits = loaded.Limits;
+            pageSize = loaded.PreferredPageSize ?? limits.DefaultPageSize;
+            pageSize = Math.Clamp(pageSize, 1, limits.MaximumPageSize);
+
+            if (selectedObject is not null)
+            {
+                DbObjectSummary? current = database.Schemas.SelectMany(x => x.Objects).FirstOrDefault(x => x.Name == selectedObject.Name);
+                if (current is null) ClearSelection(); else await SelectObjectAsync(current);
+            }
+        }
+        catch (Exception exception)
+        {
+            error = DisplayError(exception);
+            database = null;
+        }
+        finally { loading = false; }
+    }
+
+    private async Task SelectObjectAsync(DbObjectSummary item)
+    {
+        bool selectionChanged = selectedObject?.Name != item.Name;
+        selectedObject = item;
+        if (mobileTreeOpen) await ReleaseModalAsync();
+        mobileTreeOpen = false;
+        if (selectionChanged) ResetQueryControls();
+        rowPage = null;
+        error = null;
+        busy = true;
+        try
+        {
+            selectedTable = await Workspace.LoadTableAsync(DatabaseId, item.Name, false, lifetime.Token);
+            if (activeTab is WorkspaceTab.Data) await LoadRowsAsync();
+        }
+        catch (Exception exception) { error = DisplayError(exception); }
+        finally { busy = false; }
+    }
+
+    private async Task<bool> LoadRowsAsync(
+        PageRequest? pageRequest = null,
+        CursorPageTransition? transition = null,
+        bool useDraftQuery = false,
+        bool resetNavigationOnSuccess = false)
+    {
+        if (selectedObject is null) return false;
+        busy = true;
+        error = null;
+        try
+        {
+            FilterExpression? filter = useDraftQuery
+                ? selectedTable is null
+                    ? null
+                    : RowQueryBuilder.CombineWithAnd(
+                        RowQueryBuilder.BuildQuickFilter(selectedTable, quickSearchColumn, quickSearchValue),
+                        RowQueryBuilder.BuildFilter(selectedTable, filterDrafts, filterLogicalOperator))
+                : appliedFilter;
+            filter?.ValidateAgainst(selectedTable!);
+            IReadOnlyList<DbSort> sorts = useDraftQuery
+                ? sortColumn is null || sortDirection is null
+                    ? []
+                    : [new DbSort(sortColumn, sortDirection.Value)]
+                : appliedSorts;
+            RowPage loadedPage = await Workspace.QueryRowsAsync(
+                new RowQueryRequest(
+                    DatabaseId,
+                    selectedObject.Name,
+                    pageRequest ?? pageNavigation.CurrentRequest(pageSize),
+                    filter,
+                    sorts,
+                    includeTotalCount),
+                lifetime.Token);
+            if (transition is CursorPageTransition completedTransition)
+            {
+                pageNavigation.Commit(completedTransition);
+            }
+            else if (resetNavigationOnSuccess)
+            {
+                pageNavigation.Reset();
+            }
+            rowPage = loadedPage;
+            selectedRows.Clear();
+            if (useDraftQuery)
+            {
+                appliedFilter = filter;
+                appliedSorts = sorts;
+            }
+            return true;
+        }
+        catch (Exception exception)
+        {
+            error = DisplayError(exception);
+            return false;
+        }
+        finally { busy = false; }
+    }
+
+    private async Task SetTabAsync(WorkspaceTab tab)
+    {
+        if (!IsTabEnabled(tab)) return;
+        if (activeTab == WorkspaceTab.Activity && tab != WorkspaceTab.Activity) StopActivityPolling();
+        if (tab is WorkspaceTab.Transfer or WorkspaceTab.Activity) await RefreshComponentScopeAsync();
+        activeTab = tab;
+        if (tab == WorkspaceTab.Data && selectedObject is not null && rowPage is null) await LoadRowsAsync();
+        if (tab == WorkspaceTab.Activity)
+        {
+            await LoadActivityAsync();
+            StartActivityPolling();
+        }
+    }
+
+    private async Task HandleTabKeyAsync(WorkspaceTab current, KeyboardEventArgs args)
+    {
+        WorkspaceTab? next = WorkspaceTabNavigation.Move(current, args.Key, IsTabEnabled);
+        if (next is null) return;
+        await SetTabAsync(next.Value);
+        try
+        {
+            accessibilityModule ??= await JS.InvokeAsync<IJSObjectReference>("import", "./_content/RazorDbManager/razordbmanager-accessibility.js");
+            await accessibilityModule.InvokeVoidAsync("focusElementById", TabId(next.Value));
+        }
+        catch (JSException) { }
+    }
+
+    private bool IsTabEnabled(WorkspaceTab tab) => tab switch
+    {
+        WorkspaceTab.Sql => !ReadOnly && Has(RazorDbCapability.ExecuteSql),
+        WorkspaceTab.Transfer => !ReadOnly && Has(RazorDbCapability.Import | RazorDbCapability.Export, any: true),
+        _ => true,
+    };
+
+    private void NormalizeActiveTab()
+    {
+        activeTab = WorkspaceTabNavigation.Normalize(activeTab, IsTabEnabled);
+    }
+
+    private async Task RefreshAsync()
+    {
+        if (activeTab == WorkspaceTab.Activity)
+        {
+            await RefreshActivityAsync();
+            return;
+        }
+        if (selectedObject is null) await LoadDatabaseAsync(true);
+        else
+        {
+            selectedTable = await Workspace.LoadTableAsync(DatabaseId, selectedObject.Name, true, lifetime.Token);
+            await LoadRowsAsync();
+        }
+    }
+
+    private async Task ChangePageAsync(int delta)
+    {
+        if (rowPage is null || delta == 0) return;
+        bool available = delta > 0
+            ? pageNavigation.TryCreateNext(rowPage, pageSize, out CursorPageTransition transition)
+            : pageNavigation.TryCreatePrevious(pageSize, out transition);
+        if (available)
+        {
+            await LoadRowsAsync(transition.Request, transition);
+        }
+    }
+
+    private async Task ChangePageSizeAsync(ChangeEventArgs args)
+    {
+        if (!int.TryParse(args.Value?.ToString(), out int size) || size <= 0 || size == pageSize)
+        {
+            return;
+        }
+
+        int previousPageSize = pageSize;
+        pageSize = size;
+        bool loaded = await LoadRowsAsync(
+            PageRequest.FromOffset(pageSize),
+            resetNavigationOnSuccess: true);
+        if (loaded)
+        {
+            await Workspace.SetPageSizeAsync(DatabaseId, pageSize, lifetime.Token);
+        }
+        else
+        {
+            pageSize = previousPageSize;
+        }
+    }
+
+    private async Task ApplyQueryAsync()
+    {
+        await LoadRowsAsync(
+            PageRequest.FromOffset(pageSize),
+            useDraftQuery: true,
+            resetNavigationOnSuccess: true);
+    }
+
+    private async Task QuickSearchKeyDownAsync(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter") await ApplyQueryAsync();
+    }
+
+    private async Task ClearQueryAsync()
+    {
+        ResetQueryControls();
+        await LoadRowsAsync(PageRequest.FromOffset(pageSize), resetNavigationOnSuccess: true);
+    }
+
+    private void PopulateColumnFilters()
+    {
+        if (selectedTable is null) return;
+        filterDrafts.Clear();
+        foreach (DbColumnMetadata column in selectedTable.Columns.Take(50))
+        {
+            filterDrafts.Add(new FilterDraft
+            {
+                Column = column.Name,
+                Operator = RowQueryBuilder.DefaultOperator(column.Type.Kind),
+            });
+        }
+    }
+
+    private void AddFilterDraft()
+    {
+        filterDrafts.Add(new FilterDraft());
+    }
+
+    private void RemoveFilterDraft(FilterDraft draft)
+    {
+        if (filterDrafts.Count == 1)
+        {
+            draft.Column = string.Empty;
+            draft.Value = string.Empty;
+            draft.Operator = FilterDraftOperator.Contains;
+        }
+        else
+        {
+            filterDrafts.Remove(draft);
+        }
+    }
+
+    private void FilterColumnChanged(FilterDraft draft)
+    {
+        DbColumnMetadata? column = selectedTable?.Columns.FirstOrDefault(item => item.Name == draft.Column);
+        IReadOnlyList<FilterDraftOperator> operators = column is null
+            ? []
+            : RowQueryBuilder.Operators(column.Type.Kind);
+        if (operators.Count > 0 && !operators.Contains(draft.Operator)) draft.Operator = operators[0];
+    }
+
+    private static void QueryDraftChanged() { }
+
+    private async Task ToggleSortAsync(string column)
+    {
+        string? previousColumn = sortColumn;
+        DbSortDirection? previousDirection = sortDirection;
+        if (!string.Equals(sortColumn, column, StringComparison.Ordinal))
+        {
+            sortColumn = column;
+            sortDirection = DbSortDirection.Ascending;
+        }
+        else if (sortDirection == DbSortDirection.Ascending)
+        {
+            sortDirection = DbSortDirection.Descending;
+        }
+        else
+        {
+            sortColumn = null;
+            sortDirection = null;
+        }
+        bool loaded = await LoadRowsAsync(
+            PageRequest.FromOffset(pageSize),
+            useDraftQuery: true,
+            resetNavigationOnSuccess: true);
+        if (!loaded)
+        {
+            sortColumn = previousColumn;
+            sortDirection = previousDirection;
+        }
+    }
+
+    private async Task IncludeTotalCountChanged(ChangeEventArgs args)
+    {
+        includeTotalCount = args.Value is true;
+        await LoadRowsAsync();
+    }
+
+    private void ResetQueryControls()
+    {
+        filterDrafts.Clear();
+        filterDrafts.Add(new FilterDraft());
+        filterLogicalOperator = DbLogicalOperator.And;
+        quickSearchColumn = string.Empty;
+        quickSearchValue = string.Empty;
+        sortColumn = null;
+        sortDirection = null;
+        appliedFilter = null;
+        appliedSorts = [];
+        pageNavigation.Reset();
+    }
+
+    private void OpenInsert() { editingRow = null; editorError = null; editorOpen = true; pendingModal = ModalKind.RowEditor; }
+    private void OpenEdit(DbRow row) { editingRow = row; editorError = null; editorOpen = true; pendingModal = ModalKind.RowEditor; }
+    private void CloseEditor() { editorOpen = false; editingRow = null; editorError = null; }
+    private async Task CloseEditorAsync() { await ReleaseModalAsync(); CloseEditor(); }
+
+    private async Task SaveRowAsync(IReadOnlyDictionary<string, EditValue> values)
+    {
+        if (ReadOnly || selectedTable is null) return;
+        busy = true;
+        try
+        {
+            RowMutationResult result = editingRow is null
+                ? await Workspace.InsertRowAsync(DatabaseId, selectedTable, values, lifetime.Token)
+                : await Workspace.UpdateRowAsync(DatabaseId, selectedTable, editingRow, values, lifetime.Token);
+            if (result.Status == RowMutationStatus.Succeeded)
+            {
+                await CloseEditorAsync();
+                await LoadRowsAsync();
+            }
+            else
+            {
+                editorError = L[result.Status == RowMutationStatus.NotFound ? "RowNotFound" : "RowConflict"];
+            }
+        }
+        catch (Exception exception) { editorError = DisplayError(exception); }
+        finally { busy = false; }
+    }
+
+    private void RequestDelete(DbRow row)
+    {
+        if (ReadOnly || row.Identity is null) return;
+        deletingRow = row;
+        deletingRows.Clear();
+        deleteError = null;
+        pendingModal = ModalKind.Delete;
+    }
+
+    private void RequestBatchDelete()
+    {
+        if (ReadOnly || selectedRows.Count == 0 || !Has(RazorDbCapability.DeleteRows)) return;
+        deletingRow = null;
+        deletingRows.Clear();
+        deletingRows.AddRange(selectedRows);
+        deleteError = null;
+        pendingModal = ModalKind.Delete;
+    }
+
+    private void CancelDelete()
+    {
+        if (busy) return;
+        deletingRow = null;
+        deletingRows.Clear();
+        deleteError = null;
+    }
+    private async Task CancelDeleteAsync() { if (busy) return; await ReleaseModalAsync(); CancelDelete(); }
+
+    private async Task ConfirmDeleteAsync()
+    {
+        if (ReadOnly || selectedTable is null || (deletingRow?.Identity is null && deletingRows.Count == 0)) return;
+        busy = true;
+        try
+        {
+            RowMutationStatus status;
+            if (deletingRows.Count > 0)
+            {
+                BatchRowMutationResult batch = await Workspace.DeleteRowsAsync(
+                    DatabaseId,
+                    selectedTable,
+                    deletingRows,
+                    lifetime.Token);
+                status = batch.Status;
+            }
+            else
+            {
+                RowMutationResult single = await Workspace.DeleteRowAsync(
+                    DatabaseId,
+                    selectedTable,
+                    deletingRow!,
+                    lifetime.Token);
+                status = single.Status;
+            }
+            if (status == RowMutationStatus.Succeeded)
+            {
+                await ReleaseModalAsync();
+                deletingRow = null;
+                deletingRows.Clear();
+                selectedRows.Clear();
+                deleteError = null;
+                await LoadRowsAsync();
+            }
+            else
+            {
+                deleteError = L[status == RowMutationStatus.NotFound ? "RowNotFound" : deletingRows.Count > 0 ? "BatchDeleteConflict" : "RowConflict"];
+            }
+        }
+        catch (Exception exception) { deleteError = DisplayError(exception); }
+        finally { busy = false; }
+    }
+
+    private async Task ExecuteSqlAsync()
+    {
+        if (ReadOnly || sqlExecution is not null || string.IsNullOrWhiteSpace(sql)) return;
+        CancellationTokenSource execution = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);
+        sqlExecution = execution;
+        busy = true; error = null; sqlResult = null;
+        try { sqlResult = await Workspace.ExecuteSqlAsync(DatabaseId, sql, execution.Token); }
+        catch (Exception exception) { error = DisplayError(exception); }
+        finally
+        {
+            if (ReferenceEquals(sqlExecution, execution)) sqlExecution = null;
+            execution.Dispose();
+            busy = false;
+        }
+    }
+
+    private void CancelSql() => sqlExecution?.Cancel();
+
+    private async Task ApplySqlTemplateAsync(ChangeEventArgs args)
+    {
+        if (ReadOnly || selectedTable is null || !Has(RazorDbCapability.ExecuteSql)
+            || !Enum.TryParse(args.Value?.ToString(), out SqlTemplateKind kind)) return;
+        SetSqlTemplate(kind);
+        await SetTabAsync(WorkspaceTab.Sql);
+    }
+
+    private void SetSqlTemplate(SqlTemplateKind kind)
+    {
+        if (ReadOnly || selectedTable is null || !Has(RazorDbCapability.ExecuteSql)) return;
+        try
+        {
+            sql = SqlTemplateBuilder.Build(selectedTable, kind);
+        }
+        catch (Exception exception) { error = DisplayError(exception); }
+    }
+
+    private bool IsRowSelected(DbRow row) => selectedRows.Contains(row);
+
+    private bool CanSelectRows => !ReadOnly && Has(
+        RazorDbCapability.DeleteRows | RazorDbCapability.Export,
+        any: true);
+
+    private bool AllSelectableRowsSelected => rowPage is { Rows.Count: > 0 }
+        && rowPage.Rows.Where(row => row.Identity is not null).All(selectedRows.Contains)
+        && rowPage.Rows.Any(row => row.Identity is not null);
+
+    private void ToggleRowSelection(DbRow row, ChangeEventArgs args)
+    {
+        if (row.Identity is null) return;
+        bool selected = args.Value is true || string.Equals(args.Value?.ToString(), "true", StringComparison.OrdinalIgnoreCase);
+        if (selected)
+        {
+            if (selectedRows.Count < RazorDbBatchLimits.MaximumRows) selectedRows.Add(row);
+        }
+        else selectedRows.Remove(row);
+    }
+
+    private void ToggleSelectAll(ChangeEventArgs args)
+    {
+        bool selected = args.Value is true || string.Equals(args.Value?.ToString(), "true", StringComparison.OrdinalIgnoreCase);
+        selectedRows.Clear();
+        if (!selected || rowPage is null) return;
+        foreach (DbRow row in rowPage.Rows.Where(row => row.Identity is not null).Take(RazorDbBatchLimits.MaximumRows))
+            selectedRows.Add(row);
+    }
+
+    private void ClearSelectedRows() => selectedRows.Clear();
+
+    private async Task ExportSelectedAsync()
+    {
+        if (ReadOnly || selectedObject is null || selectedRows.Count == 0 || !Has(RazorDbCapability.Export)) return;
+        busy = true;
+        error = null;
+        try
+        {
+            FilterExpression filter = RowQueryBuilder.BuildIdentityFilter(selectedRows);
+            await Workspace.QueueExportAsync(
+                DatabaseId,
+                TransferFormat.Csv,
+                [selectedObject.Name],
+                false,
+                true,
+                exportCompressWithGzip,
+                new RowExportQuery(filter, appliedSorts),
+                lifetime.Token);
+            await LoadActivityAsync();
+        }
+        catch (Exception exception) { error = DisplayError(exception); }
+        finally { busy = false; }
+    }
+
+    private async Task DownloadSqlResultAsync(SqlStatementResult result, int resultIndex)
+    {
+        browserModule ??= await JS.InvokeAsync<IJSObjectReference>(
+            "import",
+            lifetime.Token,
+            "./_content/RazorDbManager/razordbmanager.js");
+        string csv = SqlResultCsvExporter.Build(result);
+        await browserModule.InvokeVoidAsync(
+            "downloadTextFile",
+            lifetime.Token,
+            $"sql-result-{resultIndex + 1}.csv",
+            csv,
+            "text/csv;charset=utf-8");
+    }
+
+    private void OpenSchemaEditor()
+    {
+        if (ReadOnly || selectedTable is null || !Has(RazorDbCapability.ModifySchema)) return;
+        schemaEditorTable = selectedTable;
+        schemaEditorOpen = true;
+        ddlPreview = null;
+        pendingSchemaChange = null;
+        schemaError = null;
+        pendingModal = ModalKind.SchemaEditor;
+    }
+
+    private void OpenCreateTableEditor()
+    {
+        string? schema = CreateTableSchema;
+        if (ReadOnly || schema is null || !Has(RazorDbCapability.ModifySchema)) return;
+        schemaEditorTable = EmptyTable(schema);
+        schemaEditorOpen = true;
+        ddlPreview = null;
+        pendingSchemaChange = null;
+        schemaError = null;
+        pendingModal = ModalKind.SchemaEditor;
+    }
+
+    private void CloseSchemaEditor() { schemaEditorOpen = false; schemaEditorTable = null; ddlPreview = null; pendingSchemaChange = null; schemaError = null; }
+    private async Task CloseSchemaEditorAsync()
+    {
+        if (busy) return;
+        await ReleaseModalAsync();
+        CloseSchemaEditor();
+    }
+    private void ClearDdlPreview() { ddlPreview = null; schemaError = null; }
+    private async Task PreviewSchemaAsync(SchemaChange change)
+    {
+        if (ReadOnly) return;
+        busy = true; schemaError = null;
+        try { pendingSchemaChange = change; ddlPreview = await Workspace.PreviewSchemaAsync(DatabaseId, change, lifetime.Token); }
+        catch (Exception exception) { schemaError = DisplayError(exception); }
+        finally { busy = false; }
+    }
+
+    private async Task ExecuteSchemaAsync()
+    {
+        if (ReadOnly || pendingSchemaChange is null || ddlPreview is null) return;
+        busy = true; schemaError = null;
+        try
+        {
+            await Workspace.ExecuteSchemaAsync(DatabaseId, pendingSchemaChange, ddlPreview, lifetime.Token);
+            await ReleaseModalAsync();
+            CloseSchemaEditor();
+            await LoadDatabaseAsync(true);
+        }
+        catch (Exception exception) { schemaError = DisplayError(exception); }
+        finally { busy = false; }
+    }
+
+    private async Task ExportAsync(TransferFormat format)
+    {
+        if (ReadOnly) return;
+        busy = true; error = null;
+        try
+        {
+            RowExportQuery? rowQuery = null;
+            if (format == TransferFormat.Csv && selectedTable is not null)
+            {
+                rowQuery = new RowExportQuery(appliedFilter, appliedSorts);
+            }
+            await Workspace.QueueExportAsync(
+                DatabaseId,
+                format,
+                selectedObject is null ? Array.Empty<DbObjectName>() : new[] { selectedObject.Name },
+                format == TransferFormat.Sql && exportIncludeSchema,
+                exportIncludeData,
+                exportCompressWithGzip,
+                rowQuery,
+                lifetime.Token);
+            await LoadActivityAsync();
+        }
+        catch (Exception exception) { error = DisplayError(exception); }
+        finally { busy = false; }
+    }
+
+    private async Task LoadActivityAsync()
+    {
+        if (activityLoading) return;
+        activityLoading = true;
+        try
+        {
+            (jobs, audit) = await Workspace.GetActivityAsync(DatabaseId, lifetime.Token);
+        }
+        catch (Exception exception) { error = DisplayError(exception); }
+        finally { activityLoading = false; }
+    }
+
+    private async Task RefreshActivityAsync()
+    {
+        await RefreshComponentScopeAsync();
+        await LoadActivityAsync();
+        StartActivityPolling();
+    }
+
+    private async Task RefreshComponentScopeAsync()
+    {
+        AuthenticationState state = await AuthenticationState.GetAuthenticationStateAsync();
+        string? actorId = state.User.Identity?.IsAuthenticated == true
+            ? state.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                ?? state.User.FindFirst("sub")?.Value
+                ?? state.User.Identity.Name
+            : null;
+        componentScopeToken = string.IsNullOrWhiteSpace(actorId) || string.IsNullOrWhiteSpace(DatabaseId)
+            ? null
+            : ComponentScopes.Protect(actorId, DatabaseId, ReadOnly);
+    }
+
+    private void StartComponentScopeRefresh()
+    {
+        StopComponentScopeRefresh();
+        componentScopeRefresh = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);
+        _ = RefreshComponentScopeLoopAsync(componentScopeRefresh.Token);
+    }
+
+    private async Task RefreshComponentScopeLoopAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            using PeriodicTimer timer = new(RazorDbComponentScopeProtector.RefreshInterval);
+            while (await timer.WaitForNextTickAsync(cancellationToken))
+            {
+                await InvokeAsync(async () =>
+                {
+                    await RefreshComponentScopeAsync();
+                    StateHasChanged();
+                });
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+    }
+
+    private void StopComponentScopeRefresh()
+    {
+        componentScopeRefresh?.Cancel();
+        componentScopeRefresh?.Dispose();
+        componentScopeRefresh = null;
+    }
+
+    private void StartActivityPolling()
+    {
+        StopActivityPolling();
+        if (activeTab != WorkspaceTab.Activity || !HasActiveJobs) return;
+        activityPolling = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);
+        _ = PollActivityAsync(activityPolling.Token);
+    }
+
+    private async Task PollActivityAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            while (!cancellationToken.IsCancellationRequested && activeTab == WorkspaceTab.Activity && HasActiveJobs)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken);
+                await InvokeAsync(async () =>
+                {
+                    if (activeTab != WorkspaceTab.Activity || cancellationToken.IsCancellationRequested) return;
+                    await LoadActivityAsync();
+                    StateHasChanged();
+                });
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+    }
+
+    private void StopActivityPolling()
+    {
+        activityPolling?.Cancel();
+        activityPolling?.Dispose();
+        activityPolling = null;
+    }
+
+    private bool HasActiveJobs => jobs.Any(job => job.Status is RazorDbJobStatus.Queued or RazorDbJobStatus.Running);
+
+    private async Task CancelJobAsync(RazorDbJobRecord job)
+    {
+        if (ReadOnly || job.Status is not (RazorDbJobStatus.Queued or RazorDbJobStatus.Running)) return;
+        busy = true;
+        error = null;
+        try
+        {
+            await Workspace.CancelJobAsync(DatabaseId, job.Id, lifetime.Token);
+            await LoadActivityAsync();
+            StartActivityPolling();
+        }
+        catch (Exception exception) { error = DisplayError(exception); }
+        finally { busy = false; }
+    }
+
+    private bool Has(RazorDbCapability capabilities, bool any = false)
+    {
+        RazorDbCapability effective = database?.EffectiveCapabilities ?? RazorDbCapability.None;
+        return any ? (effective & capabilities) != 0 : effective.Includes(capabilities);
+    }
+
+    private IEnumerable<DbSchemaMetadata> FilteredSchemas => database?.Schemas.Select(schema => new DbSchemaMetadata(
+        schema.Name,
+        schema.Objects.Where(item => string.IsNullOrWhiteSpace(objectSearch)
+            || item.Name.Name.Contains(objectSearch, StringComparison.CurrentCultureIgnoreCase)).ToArray()))
+        ?? Array.Empty<DbSchemaMetadata>();
+
+    private RenderFragment ObjectTree() => @<text>
+        <div class="rdm-sidebar-head">
+            <div class="rdm-sidebar-title"><strong>@L["Tables"]</strong><span class="rdm-tree-count">@(database?.Schemas.Sum(x => x.Objects.Count) ?? 0)</span></div>
+            <input class="rdm-search" placeholder="@L["SearchObjects"]" @bind="objectSearch" @bind:event="oninput" />
+        </div>
+        <div class="rdm-tree">
+            @foreach (DbSchemaMetadata schema in FilteredSchemas)
+            {
+                <div class="rdm-schema">
+                    <div class="rdm-schema-label"><Icon Name="schema" /><span>@schema.Name</span></div>
+                    @foreach (DbObjectSummary item in schema.Objects)
+                    {
+                        <button class="rdm-tree-item" aria-current="@(selectedObject?.Name == item.Name)" title="@item.Name.ToString()" @onclick="() => SelectObjectAsync(item)">
+                            <Icon Name="@(item.Kind == DbObjectKind.Table ? "table" : "view")" />
+                            <span class="rdm-tree-name">@item.Name.Name</span>
+                            @if (item.EstimatedRowCount is long count) { <span class="rdm-tree-count">@CompactNumber(count)</span> }
+                        </button>
+                    }
+                </div>
+            }
+        </div>
+    </text>;
+
+    private RenderFragment TabButton(WorkspaceTab tab, string icon, string label, bool disabled) => @<button
+        class="rdm-tab"
+        id="@TabId(tab)"
+        role="tab"
+        aria-controls="@PanelId(tab)"
+        aria-selected="@(activeTab == tab ? "true" : "false")"
+        tabindex="@(activeTab == tab ? 0 : -1)"
+        disabled="@disabled"
+        @onkeydown="args => HandleTabKeyAsync(tab, args)"
+        @onclick="() => SetTabAsync(tab)"><Icon Name="@icon" /> @label</button>;
+
+    private RenderFragment DataPanel() => @<text>
+        @if (selectedTable is null)
+        {
+            <EmptyState IconName="table" Title="@L["NoTableSelected"]" />
+        }
+        else
+        {
+            <div class="rdm-data-commandbar">
+                <button class="rdm-button rdm-button-primary rdm-new-record" disabled="@(ReadOnly || !Has(RazorDbCapability.InsertRows) || selectedTable.Kind != DbObjectKind.Table)" @onclick="OpenInsert"><Icon Name="add" /> @L["NewRecord"]</button>
+                <div class="rdm-quick-query" role="search">
+                    <select class="rdm-select rdm-quick-column" @bind="quickSearchColumn" aria-label="@L["QuickSearchColumn"]">
+                        <option value="">@L["AllTextColumns"]</option>
+                        @foreach (DbColumnMetadata column in selectedTable.Columns) { <option value="@column.Name">@column.Name</option> }
+                    </select>
+                    <input class="rdm-search" @bind="quickSearchValue" @bind:event="oninput" @onkeydown="QuickSearchKeyDownAsync" placeholder="@L["QuickSearchPlaceholder"]" aria-label="@L["QuickSearch"]" />
+                    <button type="button" class="rdm-button" disabled="@busy" @onclick="ApplyQueryAsync"><Icon Name="search" /> @L["Search"]</button>
+                    <button type="button" class="rdm-button rdm-icon-button" title="@L["ClearQuery"]" disabled="@busy" @onclick="ClearQueryAsync"><Icon Name="close" /></button>
+                </div>
+                @if (Has(RazorDbCapability.ExecuteSql) && !ReadOnly)
+                {
+                    <select class="rdm-select rdm-sql-template-select" value="" @onchange="ApplySqlTemplateAsync" aria-label="@L["SqlTemplate"]">
+                        <option value="">@L["SqlTemplate"]</option>
+                        <option value="@SqlTemplateKind.Select">SELECT</option>
+                        <option value="@SqlTemplateKind.Where">WHERE</option>
+                        <option value="@SqlTemplateKind.Insert">INSERT</option>
+                        <option value="@SqlTemplateKind.Update">UPDATE</option>
+                        <option value="@SqlTemplateKind.Delete">DELETE</option>
+                    </select>
+                }
+            </div>
+            <details class="rdm-advanced-query">
+                <summary><Icon Name="filter" /> @L["ColumnSearch"]</summary>
+                <div class="rdm-filter-builder">
+                    <div class="rdm-filter-head">
+                        <span class="rdm-context-meta">@L["CombineFilters"]</span>
+                        <select class="rdm-select rdm-filter-logic" @bind="filterLogicalOperator" @bind:after="QueryDraftChanged">
+                            <option value="@DbLogicalOperator.And">@L["And"]</option>
+                            <option value="@DbLogicalOperator.Or">@L["Or"]</option>
+                        </select>
+                        <button type="button" class="rdm-button" disabled="@busy" @onclick="AddFilterDraft"><Icon Name="add" /> @L["AddFilter"]</button>
+                        <button type="button" class="rdm-button" disabled="@busy" @onclick="PopulateColumnFilters"><Icon Name="columns" /> @L["AllColumns"]</button>
+                    </div>
+                    <div class="rdm-column-search-head" aria-hidden="true"><span>@L["Column"]</span><span>@L["Type"]</span><span>@L["FilterOperator"]</span><span>@L["FilterValue"]</span><span></span></div>
+                    @foreach (FilterDraft draft in filterDrafts)
+                    {
+                        DbColumnMetadata? filterColumn = selectedTable.Columns.FirstOrDefault(column => column.Name == draft.Column);
+                        IReadOnlyList<FilterDraftOperator> operators = filterColumn is null ? [] : RowQueryBuilder.Operators(filterColumn.Type.Kind);
+                        <div class="rdm-filter-row" @key="draft.Id">
+                            <select class="rdm-select" @bind="draft.Column" @bind:after="() => FilterColumnChanged(draft)" aria-label="@L["FilterColumn"]">
+                                <option value="">@L["FilterColumn"]</option>
+                                @foreach (DbColumnMetadata column in selectedTable.Columns) { <option value="@column.Name">@column.Name</option> }
+                            </select>
+                            <span class="rdm-filter-type">@(filterColumn?.Type.ProviderTypeName ?? "-")</span>
+                            <select class="rdm-select" @bind="draft.Operator" @bind:after="QueryDraftChanged" disabled="@(filterColumn is null)" aria-label="@L["FilterOperator"]">
+                                @foreach (FilterDraftOperator filterOperator in operators) { <option value="@filterOperator">@L[filterOperator.ToString()]</option> }
+                            </select>
+                            <input class="rdm-input" @bind="draft.Value" @bind:event="oninput" @bind:after="QueryDraftChanged" placeholder="@L["FilterValue"]" disabled="@(filterColumn is null || !RowQueryBuilder.RequiresValue(draft.Operator))" />
+                            <button type="button" class="rdm-button rdm-icon-button" title="@L["RemoveFilter"]" disabled="@busy" @onclick="() => RemoveFilterDraft(draft)"><Icon Name="close" /></button>
+                        </div>
+                    }
+                    <div class="rdm-filter-actions">
+                        <label class="rdm-check"><input type="checkbox" checked="@includeTotalCount" @onchange="IncludeTotalCountChanged" /> @L["ExactTotalCount"]</label>
+                        <button class="rdm-button" disabled="@busy" @onclick="ClearQueryAsync"><Icon Name="close" /> @L["Clear"]</button>
+                        <button class="rdm-button rdm-button-primary" disabled="@busy" @onclick="ApplyQueryAsync"><Icon Name="filter" /> @L["RunQuery"]</button>
+                    </div>
+                </div>
+            </details>
+            @if (selectedRows.Count > 0)
+            {
+                <div class="rdm-batch-toolbar" role="toolbar" aria-label="@L["BatchActions"]">
+                    <strong>@L["SelectedRows", selectedRows.Count]</strong>
+                    <button type="button" class="rdm-button" disabled="@(busy || ReadOnly || !Has(RazorDbCapability.Export))" @onclick="ExportSelectedAsync"><Icon Name="download" /> @L["ExportSelected"]</button>
+                    <button type="button" class="rdm-button rdm-button-danger" disabled="@(busy || ReadOnly || !Has(RazorDbCapability.DeleteRows))" @onclick="RequestBatchDelete"><Icon Name="delete" /> @L["DeleteSelected"]</button>
+                    <button type="button" class="rdm-button rdm-icon-button" title="@L["ClearSelection"]" disabled="@busy" @onclick="ClearSelectedRows"><Icon Name="close" /></button>
+                </div>
+            }
+            @if (rowPage?.Truncated == true)
+            {
+                <div class="rdm-alert" role="status"><Icon Name="alert" /><span>@L["DataResultsTruncated"]</span></div>
+            }
+            @if (rowPage is null)
+            {
+                <div class="rdm-loading"><div class="rdm-spinner"></div></div>
+            }
+            else if (rowPage.Rows.Count == 0)
+            {
+                <EmptyState IconName="rows" Title="@L["NoRows"]" />
+            }
+            else
+            {
+                <div class="rdm-grid-wrap">
+                    <table class="rdm-grid">
+                        <thead><tr><th class="rdm-select-cell"><input type="checkbox" checked="@AllSelectableRowsSelected" disabled="@(busy || !CanSelectRows || !rowPage.Rows.Any(row => row.Identity is not null))" @onchange="ToggleSelectAll" aria-label="@L["SelectAllRows"]" /></th><th class="rdm-actions-cell"></th>@foreach (DbColumnMetadata column in rowPage.Columns) { <th><button type="button" class="rdm-sort-button" title="@SortTitle(column.Name)" aria-label="@SortTitle(column.Name)" @onclick="() => ToggleSortAsync(column.Name)"><span>@column.Name</span><span class="rdm-sort-indicator">@SortIndicator(column.Name)</span></button><span class="rdm-col-type">@column.Type.ProviderTypeName</span></th> }</tr></thead>
+                        <tbody>@foreach (DbRow row in rowPage.Rows) { <tr aria-selected="@(IsRowSelected(row) ? "true" : "false")"><td class="rdm-select-cell"><input type="checkbox" checked="@IsRowSelected(row)" disabled="@(busy || !CanSelectRows || row.Identity is null || (!IsRowSelected(row) && selectedRows.Count >= RazorDbBatchLimits.MaximumRows))" @onchange="args => ToggleRowSelection(row, args)" aria-label="@L["SelectRow"]" /></td><td class="rdm-actions-cell"><button class="rdm-button rdm-icon-button" title="@L["EditRow"]" disabled="@(ReadOnly || !Has(RazorDbCapability.UpdateRows) || row.Identity is null)" @onclick="() => OpenEdit(row)"><Icon Name="edit" /></button><button class="rdm-button rdm-icon-button rdm-button-danger" title="@L["DeleteRow"]" disabled="@(ReadOnly || !Has(RazorDbCapability.DeleteRows) || row.Identity is null)" @onclick="() => RequestDelete(row)"><Icon Name="delete" /></button></td>@for (int cellIndex = 0; cellIndex < row.Values.Count; cellIndex++) { DbValue value = row.Values[cellIndex]; DbColumnMetadata column = rowPage.Columns[cellIndex]; <td title="@FormatValue(value)" class="@(value.IsNull ? "rdm-cell-null" : value.Kind is DbValueKind.Binary or DbValueKind.Geometry ? "rdm-cell-binary" : null)"><span>@FormatValue(value)</span>@if (CanDownloadBinary(row, column, value)) { <form class="rdm-binary-download" method="post" action="/_razor-db-manager/binary/token" target="_blank"><AntiforgeryToken /><input type="hidden" name="payload" value="@BinaryDownloadPayload(row, column)" /><button type="submit" class="rdm-button rdm-icon-button" title="@L["DownloadBinary"]"><Icon Name="download" /></button></form> }</td> }</tr> }</tbody>
+                    </table>
+                </div>
+                <div class="rdm-pager">
+                    <span class="rdm-pager-info">@L["Page"] @(pageNavigation.PageIndex + 1) · @(rowPage.TotalCount is long totalCount ? L["TotalRows", totalCount.ToString("N0")] : L["RowsOnPage", rowPage.Rows.Count])</span>
+                    <select class="rdm-select rdm-page-size" value="@pageSize" @onchange="ChangePageSizeAsync"><option>50</option><option>100</option><option>250</option><option>500</option></select>
+                    <button class="rdm-button rdm-icon-button" title="@L["Previous"]" disabled="@(busy || pageNavigation.PageIndex == 0)" @onclick="() => ChangePageAsync(-1)"><Icon Name="previous" /></button>
+                    <button class="rdm-button rdm-icon-button" title="@L["Next"]" disabled="@(busy || !rowPage.HasMore)" @onclick="() => ChangePageAsync(1)"><Icon Name="next" /></button>
+                </div>
+            }
+        }
+    </text>;
+
+    private RenderFragment StructurePanel() => @<text>
+        @if (selectedTable is null)
+        {
+            <EmptyState IconName="columns" Title="@L["NoTableSelected"]">
+                @if (CreateTableSchema is not null)
+                {
+                    <button type="button" class="rdm-button rdm-button-primary" disabled="@(ReadOnly || !Has(RazorDbCapability.ModifySchema))" @onclick="OpenCreateTableEditor"><Icon Name="add" /> @L["CreateTable"]</button>
+                }
+            </EmptyState>
+        }
+        else
+        {
+            <div class="rdm-toolbar"><button class="rdm-button rdm-button-primary" disabled="@(ReadOnly || !Has(RazorDbCapability.ModifySchema))" @onclick="OpenSchemaEditor"><Icon Name="edit" /> @L["SchemaChange"]</button></div>
+            <div class="rdm-section">
+                <div class="rdm-structure-summary"><div class="rdm-metric"><div class="rdm-metric-label">@L["Type"]</div><div class="rdm-metric-value">@DisplayObjectKind(selectedTable.Kind)</div></div><div class="rdm-metric"><div class="rdm-metric-label">@L["Engine"]</div><div class="rdm-metric-value">@(selectedTable.Engine ?? "-")</div></div><div class="rdm-metric"><div class="rdm-metric-label">@L["Collation"]</div><div class="rdm-metric-value">@(selectedTable.Collation ?? "-")</div></div><div class="rdm-metric"><div class="rdm-metric-label">@L["Key"]</div><div class="rdm-metric-value">@(selectedTable.RowIdentityKey?.Name ?? "-")</div></div></div>
+                <div class="rdm-section-head"><Icon Name="columns" /><h3>@L["Columns"]</h3></div>
+                <div class="rdm-table-box"><table class="rdm-grid"><thead><tr><th>@L["Name"]</th><th>@L["Type"]</th><th>@L["Nullable"]</th><th>@L["Default"]</th><th>@L["Details"]</th></tr></thead><tbody>@foreach (DbColumnMetadata column in selectedTable.Columns) { <tr><td>@column.Name</td><td>@column.Type.ProviderTypeName</td><td>@DisplayBoolean(column.IsNullable)</td><td>@(column.DefaultSql ?? "-")</td><td>@(column.Comment ?? (column.IsGenerated ? L["Generated"] : column.IsAutoIncrement ? L["AutoIncrement"] : ""))</td></tr> }</tbody></table></div>
+                <div class="rdm-section-head" style="margin-top:16px"><Icon Name="key" /><h3>@L["Indexes"]</h3></div>
+                <div class="rdm-table-box"><table class="rdm-grid"><thead><tr><th>@L["Name"]</th><th>@L["Columns"]</th><th>@L["Type"]</th></tr></thead><tbody>@foreach (DbIndexMetadata index in selectedTable.Indexes) { <tr><td>@index.Name</td><td>@string.Join(", ", index.Columns.Select(x => x.Name))</td><td>@(index.IsPrimary ? "PRIMARY" : index.IsUnique ? "UNIQUE" : index.Method ?? "INDEX")</td></tr> }</tbody></table></div>
+                <div class="rdm-section-head" style="margin-top:16px"><Icon Name="key" /><h3>@L["ForeignKeys"]</h3></div>
+                @if (selectedTable.ForeignKeys.Count == 0)
+                {
+                    <div class="rdm-context-meta">@L["NoForeignKeys"]</div>
+                }
+                else
+                {
+                    <div class="rdm-table-box"><table class="rdm-grid"><thead><tr><th>@L["Name"]</th><th>@L["Columns"]</th><th>@L["ReferencedTable"]</th><th>@L["ReferencedColumns"]</th><th>@L["OnDelete"]</th><th>@L["OnUpdate"]</th></tr></thead><tbody>@foreach (DbForeignKeyMetadata foreignKey in selectedTable.ForeignKeys) { <tr><td>@foreignKey.Name</td><td>@string.Join(", ", foreignKey.Columns)</td><td>@foreignKey.ReferencedTable</td><td>@string.Join(", ", foreignKey.ReferencedColumns)</td><td>@L[foreignKey.OnDelete.ToString()]</td><td>@L[foreignKey.OnUpdate.ToString()]</td></tr> }</tbody></table></div>
+                }
+            </div>
+        }
+    </text>;
+
+    private RenderFragment SqlPanel() => @<div class="rdm-sql-layout">
+        <div class="rdm-editor">
+            @if (selectedTable is not null)
+            {
+                <div class="rdm-sql-presets" role="toolbar" aria-label="@L["SqlTemplates"]">
+                    <span class="rdm-context-meta">@L["SqlTemplates"]</span>
+                    <button type="button" class="rdm-button" disabled="@busy" @onclick="() => SetSqlTemplate(SqlTemplateKind.Select)">SELECT</button>
+                    <button type="button" class="rdm-button" disabled="@busy" @onclick="() => SetSqlTemplate(SqlTemplateKind.Where)">WHERE</button>
+                    <button type="button" class="rdm-button" disabled="@busy" @onclick="() => SetSqlTemplate(SqlTemplateKind.Insert)">INSERT</button>
+                    <button type="button" class="rdm-button" disabled="@busy" @onclick="() => SetSqlTemplate(SqlTemplateKind.Update)">UPDATE</button>
+                    <button type="button" class="rdm-button rdm-button-danger" disabled="@busy" @onclick="() => SetSqlTemplate(SqlTemplateKind.Delete)">DELETE</button>
+                </div>
+            }
+            <div class="rdm-editor-head">
+                <span class="rdm-editor-note">@L["SqlNotice"]</span>
+                @if (sqlExecution is not null)
+                {
+                    <button class="rdm-button rdm-button-danger" title="@L["CancelSql"]" @onclick="CancelSql"><Icon Name="close" /> @L["CancelSql"]</button>
+                }
+                else
+                {
+                    <button class="rdm-button rdm-button-primary" disabled="@(ReadOnly || busy || string.IsNullOrWhiteSpace(sql))" @onclick="ExecuteSqlAsync"><Icon Name="execute" /> @L["Execute"]</button>
+                }
+            </div>
+            <SqlEditor @bind-Value="sql" Placeholder="@L["SqlPlaceholder"]" AccessibilityLabel="@L["Sql"]" />
+        </div>
+        <div class="rdm-result-panel">
+            @if (sqlResult is null)
+            {
+                <div class="rdm-empty"><div class="rdm-empty-inner"><div class="rdm-empty-icon"><Icon Name="result" Size="42" /></div><h3>@L["Result"]</h3></div></div>
+            }
+            else
+            {
+                <div class="rdm-result-head"><strong>@L["Result"]</strong><span class="rdm-context-meta">@L["Milliseconds", sqlResult.Elapsed.TotalMilliseconds.ToString("N0")]</span></div>
+                @if (sqlResult.Truncated)
+                {
+                    <div class="rdm-alert" role="status"><Icon Name="alert" /><span>@L["SqlResultsTruncated"]</span></div>
+                }
+                @for (int resultIndex = 0; resultIndex < sqlResult.Results.Count; resultIndex++)
+                {
+                    SqlStatementResult result = sqlResult.Results[resultIndex];
+                    if (result.Kind == SqlStatementResultKind.ResultSet)
+                    {
+                        int capturedResultIndex = resultIndex;
+                        <div class="rdm-table-box">
+                            <div class="rdm-result-set-head">
+                                <span>@result.Rows.Count @L["Rows"]</span>
+                                <button type="button" class="rdm-button" @onclick="() => DownloadSqlResultAsync(result, capturedResultIndex)"><Icon Name="download" /> @L["ExportResult"]</button>
+                            </div>
+                            <table class="rdm-grid">
+                                <thead><tr>@foreach (DbColumnMetadata column in result.Columns) { <th>@column.Name</th> }</tr></thead>
+                                <tbody>@foreach (IReadOnlyList<DbValue> row in result.Rows) { <tr>@foreach (DbValue value in row) { <td>@FormatValue(value)</td> }</tr> }</tbody>
+                            </table>
+                        </div>
+                    }
+                    else if (result.Kind == SqlStatementResultKind.Message)
+                    {
+                        <div class="rdm-alert rdm-sql-message">@(string.IsNullOrWhiteSpace(result.Message) ? L["NoMessage"] : result.Message)</div>
+                    }
+                    else
+                    {
+                        <div class="rdm-alert">@L["RowsAffected", result.AffectedRows ?? 0]</div>
+                    }
+                }
+            }
+        </div>
+    </div>;
+
+    private RenderFragment TransferPanel() => @<div class="rdm-transfer-grid">
+        <div class="rdm-transfer-box">
+            <h3>@L["ImportCsv"]</h3>
+            <p>@L["ImportDescription"]</p>
+            @if (!ReadOnly)
+            {
+            @if (selectedObject?.Kind != DbObjectKind.Table)
+            {
+                <div class="rdm-alert rdm-transfer-alert" role="status"><Icon Name="alert" /><span>@L["SelectTableForCsv"]</span></div>
+            }
+            <form method="post" enctype="multipart/form-data" action="/_razor-db-manager/imports" target="@uploadTarget">
+                <AntiforgeryToken />
+                <input type="hidden" name="@RazorDbComponentScopeProtector.FormFieldName" value="@componentScopeToken" />
+                <input type="hidden" name="databaseId" value="@DatabaseId" />
+                <input type="hidden" name="schema" value="@selectedObject?.Name.Schema" />
+                <input type="hidden" name="table" value="@selectedObject?.Name.Name" />
+                <input type="hidden" name="hasHeader" value="@importHasHeader.ToString().ToLowerInvariant()" />
+                <input type="hidden" name="continueOnError" value="@importContinueOnError.ToString().ToLowerInvariant()" />
+                <input type="hidden" name="decodeProtectedValues" value="@importDecodeProtectedValues.ToString().ToLowerInvariant()" />
+                <div class="rdm-transfer-options">
+                    <label class="rdm-check"><input type="checkbox" @bind="importHasHeader" /> @L["CsvHeader"]</label>
+                    <label class="rdm-check"><input type="checkbox" @bind="importContinueOnError" /> @L["ContinueOnError"]</label>
+                    <label class="rdm-check"><input type="checkbox" @bind="importDecodeProtectedValues" /> @L["RazorDbExport"]</label>
+                    <label class="rdm-field"><span class="rdm-field-label">@L["Delimiter"]</span><select class="rdm-select" name="delimiter" @bind="importDelimiter"><option value=",">,</option><option value=";">;</option><option value="\t">@L["Tab"]</option><option value="|">|</option></select></label>
+                    <label class="rdm-field"><span class="rdm-field-label">@L["NullToken"]</span><input class="rdm-input" name="nullToken" maxlength="64" @bind="importNullToken" /></label>
+                </div>
+                <input class="rdm-file" type="file" name="file" required accept=".csv,text/csv" disabled="@(selectedObject?.Kind != DbObjectKind.Table || !Has(RazorDbCapability.Import))" />
+                <button type="submit" class="rdm-button rdm-button-primary" disabled="@(selectedObject?.Kind != DbObjectKind.Table || !Has(RazorDbCapability.Import))"><Icon Name="upload" /> @L["StartImport"]</button>
+            </form>
+            <div class="rdm-transfer-divider"></div>
+            <h4>@L["SqlRestore"]</h4>
+            @if (Has(RazorDbCapability.Import | RazorDbCapability.ExecuteSql))
+            {
+                <form method="post" enctype="multipart/form-data" action="/_razor-db-manager/imports" target="@uploadTarget">
+                    <AntiforgeryToken />
+                    <input type="hidden" name="@RazorDbComponentScopeProtector.FormFieldName" value="@componentScopeToken" />
+                    <input type="hidden" name="databaseId" value="@DatabaseId" />
+                    <input class="rdm-file" type="file" name="file" required accept=".sql,application/sql,text/plain" />
+                    <button type="submit" class="rdm-button rdm-button-primary"><Icon Name="upload" /> @L["StartSqlRestore"]</button>
+                </form>
+            }
+            else
+            {
+                <div class="rdm-context-meta">@L["SqlRestoreRequiresCapability"]</div>
+            }
+            <iframe class="rdm-upload-frame" title="@L["UploadResult"]" name="@uploadTarget"></iframe>
+            }
+        </div>
+        <div class="rdm-transfer-box">
+            <h3>@L["ExportCsv"]</h3>
+            <p>@L["ExportDescription"]</p>
+            <div class="rdm-transfer-options">
+                <label class="rdm-check"><input type="checkbox" @bind="exportIncludeSchema" /> @L["IncludeSchema"]</label>
+                <label class="rdm-check"><input type="checkbox" @bind="exportIncludeData" /> @L["IncludeData"]</label>
+                <label class="rdm-check"><input type="checkbox" @bind="exportCompressWithGzip" /> @L["Gzip"]</label>
+            </div>
+            @if (selectedObject?.Kind != DbObjectKind.Table)
+            {
+                <div class="rdm-alert rdm-transfer-alert" role="status"><Icon Name="alert" /><span>@L["SelectTableForCsv"]</span></div>
+            }
+            <button class="rdm-button" disabled="@(ReadOnly || busy || !Has(RazorDbCapability.Export) || selectedObject?.Kind != DbObjectKind.Table || !exportIncludeData)" @onclick="() => ExportAsync(TransferFormat.Csv)"><Icon Name="download" /> CSV</button>
+            <button class="rdm-button" disabled="@(ReadOnly || busy || !Has(RazorDbCapability.Export) || (!exportIncludeSchema && !exportIncludeData))" @onclick="() => ExportAsync(TransferFormat.Sql)"><Icon Name="download" /> SQL</button>
+        </div>
+    </div>;
+
+    private RenderFragment ActivityPanel() => @<text>
+        <div class="rdm-toolbar rdm-activity-toolbar">
+            <span class="rdm-context-meta">@(HasActiveJobs ? L["ActivityAutoRefresh"] : L["ActivityUpdatedOnDemand"])</span>
+            <button type="button" class="rdm-button" disabled="@activityLoading" @onclick="RefreshActivityAsync"><Icon Name="refresh" /> @L["Refresh"]</button>
+        </div>
+        <div class="rdm-activity-grid">
+        <div class="rdm-activity-box">
+            <div class="rdm-list-head">@L["RecentJobs"]</div>
+            @if (jobs.Count == 0) { <div class="rdm-empty"><div class="rdm-empty-inner">@L["NoActivity"]</div></div> }
+            @foreach (RazorDbJobRecord job in jobs)
+            {
+                <div class="rdm-activity-row"><div><div class="rdm-activity-name">@L[job.Kind.ToString()]</div><div class="rdm-activity-meta">@job.Id</div><div class="rdm-activity-meta">@job.RowsProcessed.ToString("N0") @L["Rows"] · @FormatBytes(job.BytesProcessed)</div>@if (!string.IsNullOrWhiteSpace(job.ResultCode)) { <div class="rdm-activity-meta">@L["ResultCode"]: @job.ResultCode</div> }</div><span>@L[job.Status.ToString()]</span><div class="rdm-activity-actions"><time>@job.UpdatedAt.LocalDateTime.ToString("g")</time>@if (!ReadOnly && job.Status is RazorDbJobStatus.Queued or RazorDbJobStatus.Running) { <button type="button" class="rdm-button rdm-icon-button rdm-button-danger" disabled="@busy" title="@L["CancelJob"]" @onclick="() => CancelJobAsync(job)"><Icon Name="close" /></button> }@if (!ReadOnly && job.Status == RazorDbJobStatus.Completed && job.OutputArtifactId is not null) { <form class="rdm-inline-form" method="post" action="@($"/_razor-db-manager/artifacts/{Uri.EscapeDataString(job.OutputArtifactId)}/token")" target="_blank"><AntiforgeryToken /><input type="hidden" name="@RazorDbComponentScopeProtector.FormFieldName" value="@componentScopeToken" /><button type="submit" class="rdm-button rdm-icon-button" title="@L["Download"]"><Icon Name="download" /></button></form> }</div></div>
+            }
+        </div>
+        <div class="rdm-activity-box">
+            <div class="rdm-list-head">@L["AuditLog"]</div>
+            @if (audit.Count == 0) { <div class="rdm-empty"><div class="rdm-empty-inner">@L["NoActivity"]</div></div> }
+            @foreach (RazorDbAuditRecord item in audit)
+            {
+                <div class="rdm-activity-row"><div><div class="rdm-activity-name">@L[item.Operation.ToString()]</div><div class="rdm-activity-meta">@item.Resource?.Object</div>@if (!string.IsNullOrWhiteSpace(item.ResultCode)) { <div class="rdm-activity-meta">@L["ResultCode"]: @item.ResultCode</div> }</div><span>@L[item.Status.ToString()]</span><time>@item.Timestamp.LocalDateTime.ToString("g")</time></div>
+            }
+        </div>
+        </div>
+    </text>;
+
+    private static string CompactNumber(long value) => value switch { >= 1_000_000 => $"{value / 1_000_000d:0.#}m", >= 1_000 => $"{value / 1_000d:0.#}k", _ => value.ToString(CultureInfo.InvariantCulture) };
+    private string? CreateTableSchema
+    {
+        get
+        {
+            if (database is null || database.Schemas.Count == 0) return null;
+            if (!string.IsNullOrWhiteSpace(database.DefaultSchema)
+                && database.Schemas.Any(schema => string.Equals(schema.Name, database.DefaultSchema, StringComparison.OrdinalIgnoreCase)))
+                return database.DefaultSchema;
+            return database.Schemas.Count == 1 ? database.Schemas[0].Name : null;
+        }
+    }
+
+    private static DbTableMetadata EmptyTable(string schema) => new(
+        new DbObjectName(schema, "__new_table__"),
+        DbObjectKind.Table,
+        [], [], [], [], null, string.Empty);
+
+    private string TabId(WorkspaceTab tab) => $"{componentId}-tab-{tab.ToString().ToLowerInvariant()}";
+    private string PanelId(WorkspaceTab tab) => $"{componentId}-panel-{tab.ToString().ToLowerInvariant()}";
+
+    private void OpenMobileTree() { mobileTreeOpen = true; pendingModal = ModalKind.MobileTree; }
+    private async Task CloseMobileTreeAsync() { await ReleaseModalAsync(); mobileTreeOpen = false; }
+
+    private async Task ReleaseModalAsync()
+    {
+        if (modalSession is null) return;
+        IJSObjectReference session = modalSession;
+        modalSession = null;
+        try { await session.InvokeVoidAsync("deactivate"); }
+        catch (JSDisconnectedException) { }
+        finally
+        {
+            try { await session.DisposeAsync(); }
+            catch (JSDisconnectedException) { }
+        }
+    }
+    private static string FormatBytes(long value) => value switch { >= 1024L * 1024 * 1024 => $"{value / (1024d * 1024 * 1024):0.#} GiB", >= 1024L * 1024 => $"{value / (1024d * 1024):0.#} MiB", >= 1024L => $"{value / 1024d:0.#} KiB", _ => $"{value} B" };
+    private string SortIndicator(string column) => string.Equals(sortColumn, column, StringComparison.Ordinal) ? sortDirection switch
+    {
+        DbSortDirection.Ascending => "↑",
+        DbSortDirection.Descending => "↓",
+        _ => string.Empty,
+    } : string.Empty;
+    private string SortTitle(string column) => string.Equals(sortColumn, column, StringComparison.Ordinal) ? sortDirection switch
+    {
+        DbSortDirection.Ascending => L["SortDescending"],
+        DbSortDirection.Descending => L["ClearSort"],
+        _ => L["SortAscending"],
+    } : L["SortAscending"];
+    private string FormatValue(DbValue value) => value.Kind switch { DbValueKind.Null => "NULL", DbValueKind.Binary or DbValueKind.Geometry => L["BinaryValue", L[value.Kind.ToString()], value.Binary.Length], _ => value.Text ?? string.Empty };
+    private string DisplayObjectKind(DbObjectKind kind) => L[kind.ToString()];
+    private string DisplayBoolean(bool value) => L[value ? "Yes" : "No"];
+    private string DisplayError(Exception exception) => L[exception switch
+    {
+        RazorDbException { Code: RazorDbErrorCode.Validation } => "InvalidRequest",
+        RazorDbException { Code: RazorDbErrorCode.Forbidden } => "Unauthorized",
+        RazorDbException { Code: RazorDbErrorCode.NotFound } => "ResourceNotFound",
+        RazorDbException { Code: RazorDbErrorCode.Conflict } => "OperationConflict",
+        RazorDbException { Code: RazorDbErrorCode.LimitExceeded } => "LimitExceeded",
+        RazorDbException { Code: RazorDbErrorCode.Unsupported } => "UnsupportedOperation",
+        RazorDbException { Code: RazorDbErrorCode.DatabaseAuthentication } => "DatabaseAuthenticationFailed",
+        RazorDbException { Code: RazorDbErrorCode.DatabaseUnavailable } => "Unavailable",
+        RazorDbException { Code: RazorDbErrorCode.DatabaseRejected } => "DatabaseRejected",
+        RazorDbException { Code: RazorDbErrorCode.Cancelled } or OperationCanceledException => "OperationCancelled",
+        _ => "OperationFailed",
+    }];
+    private bool CanDownloadBinary(DbRow row, DbColumnMetadata column, DbValue value) =>
+        selectedTable is not null
+        && Has(RazorDbCapability.DownloadBinary)
+        && row.EffectiveBinaryIdentity is not null
+        && !value.IsNull
+        && column.Type.Kind is DbDataKind.Binary or DbDataKind.Geometry;
+    private string BinaryDownloadPayload(DbRow row, DbColumnMetadata column)
+    {
+        RowIdentity identity = row.EffectiveBinaryIdentity!;
+        return System.Text.Json.JsonSerializer.Serialize(new
+        {
+            databaseId = DatabaseId,
+            schema = selectedTable!.Name.Schema,
+            table = selectedTable.Name.Name,
+            column = column.Name,
+            keyName = identity.KeyName,
+            identity = identity.Values.Select(pair => new
+            {
+                column = pair.Key,
+                kind = pair.Value.Kind,
+                text = pair.Value.Kind is DbValueKind.Binary or DbValueKind.Geometry ? null : pair.Value.Text,
+                base64 = pair.Value.Kind is DbValueKind.Binary or DbValueKind.Geometry
+                    ? Convert.ToBase64String(pair.Value.Binary.Span)
+                    : null,
+            }).ToArray(),
+        });
+    }
+    private void ClearSelection() { selectedObject = null; selectedTable = null; rowPage = null; pageNavigation.Reset(); selectedRows.Clear(); CloseEditor(); deletingRow = null; deletingRows.Clear(); deleteError = null; }
+
+    private async Task ResetDatabaseStateAsync()
+    {
+        await ReleaseModalAsync();
+        StopActivityPolling();
+        sqlExecution?.Cancel();
+        sqlExecution = null;
+        database = null;
+        registrationName = null;
+        selectedObject = null;
+        selectedTable = null;
+        schemaEditorTable = null;
+        rowPage = null;
+        sqlResult = null;
+        jobs = [];
+        audit = [];
+        activeTab = WorkspaceTab.Data;
+        editingRow = null;
+        deletingRow = null;
+        deletingRows.Clear();
+        selectedRows.Clear();
+        editorOpen = false;
+        schemaEditorOpen = false;
+        mobileTreeOpen = false;
+        error = null;
+        editorError = null;
+        deleteError = null;
+        schemaError = null;
+        objectSearch = string.Empty;
+        sql = string.Empty;
+        pendingSchemaChange = null;
+        ddlPreview = null;
+        pendingModal = null;
+        ResetQueryControls();
+    }
+    public async ValueTask DisposeAsync()
+    {
+        StopComponentScopeRefresh();
+        StopActivityPolling();
+        sqlExecution?.Cancel();
+        lifetime.Cancel();
+        lifetime.Dispose();
+        await ReleaseModalAsync();
+        if (browserModule is not null)
+        {
+            try { await browserModule.DisposeAsync(); }
+            catch (JSDisconnectedException) { }
+        }
+        if (accessibilityModule is not null)
+        {
+            try { await accessibilityModule.DisposeAsync(); }
+            catch (JSDisconnectedException) { }
+        }
+    }
+    private enum ModalKind { MobileTree, RowEditor, SchemaEditor, Delete }
+}

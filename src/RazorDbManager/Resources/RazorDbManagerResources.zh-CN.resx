@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="ProductName" xml:space="preserve"><value>数据库管理器</value></data>
+  <data name="Database" xml:space="preserve"><value>数据库</value></data>
+  <data name="Tables" xml:space="preserve"><value>数据表</value></data>
+  <data name="SearchObjects" xml:space="preserve"><value>搜索对象</value></data>
+  <data name="Data" xml:space="preserve"><value>数据</value></data>
+  <data name="Structure" xml:space="preserve"><value>结构</value></data>
+  <data name="Sql" xml:space="preserve"><value>SQL</value></data>
+  <data name="Transfer" xml:space="preserve"><value>导入/导出</value></data>
+  <data name="Activity" xml:space="preserve"><value>活动记录</value></data>
+  <data name="Refresh" xml:space="preserve"><value>刷新</value></data>
+  <data name="Filter" xml:space="preserve"><value>筛选数据</value></data>
+  <data name="Apply" xml:space="preserve"><value>应用</value></data>
+  <data name="Clear" xml:space="preserve"><value>清除</value></data>
+  <data name="NewRow" xml:space="preserve"><value>新增行</value></data>
+  <data name="EditRow" xml:space="preserve"><value>编辑行</value></data>
+  <data name="DeleteRow" xml:space="preserve"><value>删除行</value></data>
+  <data name="Save" xml:space="preserve"><value>保存更改</value></data>
+  <data name="Cancel" xml:space="preserve"><value>取消</value></data>
+  <data name="Previous" xml:space="preserve"><value>上一页</value></data>
+  <data name="Next" xml:space="preserve"><value>下一页</value></data>
+  <data name="Rows" xml:space="preserve"><value>行</value></data>
+  <data name="NoTableSelected" xml:space="preserve"><value>请选择数据表以查看数据和结构。</value></data>
+  <data name="NoTables" xml:space="preserve"><value>该数据库没有可用的数据表。</value></data>
+  <data name="NoRows" xml:space="preserve"><value>此查询未返回任何数据。</value></data>
+  <data name="Loading" xml:space="preserve"><value>正在加载数据库...</value></data>
+  <data name="Unavailable" xml:space="preserve"><value>数据库提供程序不可用。</value></data>
+  <data name="Unauthorized" xml:space="preserve"><value>您无权访问该数据库。</value></data>
+  <data name="ReadOnly" xml:space="preserve"><value>只读</value></data>
+  <data name="Connected" xml:space="preserve"><value>已连接</value></data>
+  <data name="Execute" xml:space="preserve"><value>执行</value></data>
+  <data name="CancelSql" xml:space="preserve"><value>取消执行</value></data>
+  <data name="CancelJob" xml:space="preserve"><value>取消任务</value></data>
+  <data name="Preview" xml:space="preserve"><value>预览</value></data>
+  <data name="SqlPlaceholder" xml:space="preserve"><value>输入要由已配置 SQL 控制台凭据执行的 SQL...</value></data>
+  <data name="SqlNotice" xml:space="preserve"><value>SQL 由数据库账号执行，其授权范围是实际安全边界。</value></data>
+  <data name="Columns" xml:space="preserve"><value>列</value></data>
+  <data name="Indexes" xml:space="preserve"><value>索引</value></data>
+  <data name="Name" xml:space="preserve"><value>名称</value></data>
+  <data name="Type" xml:space="preserve"><value>类型</value></data>
+  <data name="Nullable" xml:space="preserve"><value>可空</value></data>
+  <data name="Default" xml:space="preserve"><value>默认值</value></data>
+  <data name="Key" xml:space="preserve"><value>键</value></data>
+  <data name="ImportCsv" xml:space="preserve"><value>导入 CSV</value></data>
+  <data name="ExportCsv" xml:space="preserve"><value>导出 CSV</value></data>
+  <data name="ChooseFile" xml:space="preserve"><value>选择 CSV 或 SQL 文件</value></data>
+  <data name="StartImport" xml:space="preserve"><value>开始导入</value></data>
+  <data name="StartExport" xml:space="preserve"><value>开始导出</value></data>
+  <data name="RecentJobs" xml:space="preserve"><value>最近任务</value></data>
+  <data name="AuditLog" xml:space="preserve"><value>审计日志</value></data>
+  <data name="NoActivity" xml:space="preserve"><value>暂无活动记录。</value></data>
+  <data name="DangerousOperation" xml:space="preserve"><value>此操作可能更改或删除数据库数据。</value></data>
+  <data name="ConfirmDelete" xml:space="preserve"><value>确定删除该行吗？此操作无法撤销。</value></data>
+  <data name="Dismiss" xml:space="preserve"><value>关闭</value></data>
+  <data name="Retry" xml:space="preserve"><value>重试</value></data>
+  <data name="Status" xml:space="preserve"><value>状态</value></data>
+  <data name="Duration" xml:space="preserve"><value>耗时</value></data>
+  <data name="Started" xml:space="preserve"><value>已开始</value></data>
+  <data name="Result" xml:space="preserve"><value>结果</value></data>
+  <data name="Null" xml:space="preserve"><value>NULL</value></data>
+  <data name="Omitted" xml:space="preserve"><value>使用默认值</value></data>
+  <data name="Page" xml:space="preserve"><value>页码</value></data>
+  <data name="RowsPerPage" xml:space="preserve"><value>每页行数</value></data>
+  <data name="Details" xml:space="preserve"><value>详情</value></data>
+  <data name="Close" xml:space="preserve"><value>关闭</value></data>
+  <data name="ImportDescription" xml:space="preserve"><value>将 CSV 或 SQL 文件直接上传到受保护的服务器任务。</value></data><data name="ExportDescription" xml:space="preserve"><value>导出作为持久任务运行，并使用一次性下载链接。</value></data><data name="Download" xml:space="preserve"><value>下载</value></data>
+  <data name="SchemaChange" xml:space="preserve"><value>修改结构</value></data><data name="Operation" xml:space="preserve"><value>操作</value></data><data name="TableName" xml:space="preserve"><value>表名</value></data><data name="NewName" xml:space="preserve"><value>新名称</value></data><data name="Column" xml:space="preserve"><value>列</value></data><data name="ColumnName" xml:space="preserve"><value>列名</value></data><data name="Length" xml:space="preserve"><value>长度</value></data><data name="Precision" xml:space="preserve"><value>精度</value></data><data name="Scale" xml:space="preserve"><value>小数位</value></data><data name="AutoIncrement" xml:space="preserve"><value>自增</value></data><data name="PrimaryKey" xml:space="preserve"><value>主键</value></data><data name="Index" xml:space="preserve"><value>索引</value></data><data name="IndexName" xml:space="preserve"><value>索引名称</value></data><data name="ColumnList" xml:space="preserve"><value>列（逗号分隔）</value></data><data name="Unique" xml:space="preserve"><value>唯一</value></data><data name="ForeignKey" xml:space="preserve"><value>外键</value></data><data name="ForeignKeyName" xml:space="preserve"><value>外键名称</value></data><data name="ReferencedSchema" xml:space="preserve"><value>引用 Schema</value></data><data name="ReferencedTable" xml:space="preserve"><value>引用表</value></data><data name="ReferencedColumns" xml:space="preserve"><value>引用列</value></data><data name="DdlImplicitCommit" xml:space="preserve"><value>DDL 可能隐式提交，不能保证回滚。</value></data><data name="ConfirmSchema" xml:space="preserve"><value>我已检查生成的 SQL，并确认执行。</value></data><data name="Back" xml:space="preserve"><value>返回</value></data><data name="CreateTable" xml:space="preserve"><value>创建表</value></data><data name="RenameTable" xml:space="preserve"><value>重命名表</value></data><data name="DropTable" xml:space="preserve"><value>删除表</value></data><data name="AddColumn" xml:space="preserve"><value>添加列</value></data><data name="AlterColumn" xml:space="preserve"><value>修改列</value></data><data name="DropColumn" xml:space="preserve"><value>删除列</value></data><data name="AddIndex" xml:space="preserve"><value>添加索引</value></data><data name="DropIndex" xml:space="preserve"><value>删除索引</value></data><data name="AddForeignKey" xml:space="preserve"><value>添加外键</value></data><data name="DropForeignKey" xml:space="preserve"><value>删除外键</value></data>
+  <data name="DownloadBinary" xml:space="preserve"><value>下载二进制值</value></data>
+  <data name="ExportResult" xml:space="preserve"><value>导出结果</value></data>
+  <data name="CsvHeader" xml:space="preserve"><value>首行为列名</value></data>
+  <data name="ContinueOnError" xml:space="preserve"><value>错误后继续导入</value></data>
+  <data name="Delimiter" xml:space="preserve"><value>分隔符</value></data>
+  <data name="NullToken" xml:space="preserve"><value>NULL 标记</value></data>
+  <data name="IncludeSchema" xml:space="preserve"><value>包含表结构</value></data>
+  <data name="IncludeData" xml:space="preserve"><value>包含数据</value></data>
+  <data name="Gzip" xml:space="preserve"><value>Gzip 压缩</value></data>
+  <data name="WorkspaceLabel" xml:space="preserve"><value>数据库工作区</value></data>
+  <data name="SchemasCount" xml:space="preserve"><value>{0} 个 Schema</value></data>
+  <data name="Schema" xml:space="preserve"><value>Schema</value></data>
+  <data name="Table" xml:space="preserve"><value>表</value></data>
+  <data name="View" xml:space="preserve"><value>视图</value></data>
+  <data name="Engine" xml:space="preserve"><value>存储引擎</value></data>
+  <data name="Collation" xml:space="preserve"><value>排序规则</value></data>
+  <data name="Generated" xml:space="preserve"><value>生成列</value></data>
+  <data name="Milliseconds" xml:space="preserve"><value>{0} 毫秒</value></data>
+  <data name="RowsAffected" xml:space="preserve"><value>影响 {0} 行</value></data>
+  <data name="UploadResult" xml:space="preserve"><value>上传结果</value></data>
+  <data name="InvalidColumnValues" xml:space="preserve"><value>一个或多个值不符合数据库列类型。</value></data>
+  <data name="BinaryImportOnly" xml:space="preserve"><value>二进制值必须通过导入或 SQL 提供。</value></data>
+  <data name="NullUnchanged" xml:space="preserve"><value>NULL（未更改）</value></data>
+  <data name="BinaryUnchanged" xml:space="preserve"><value>{0}：{1} 字节（未更改）</value></data>
+  <data name="BinaryValue" xml:space="preserve"><value>&lt;{0}：{1} 字节&gt;</value></data>
+  <data name="InvalidSchemaDefinition" xml:space="preserve"><value>Schema 定义无效。</value></data>
+  <data name="RemoveColumn" xml:space="preserve"><value>移除列</value></data>
+  <data name="AllowedValues" xml:space="preserve"><value>允许值（逗号分隔）</value></data>
+  <data name="Unsigned" xml:space="preserve"><value>无符号</value></data>
+  <data name="None" xml:space="preserve"><value>无</value></data>
+  <data name="Literal" xml:space="preserve"><value>字面量</value></data>
+  <data name="DefaultValue" xml:space="preserve"><value>默认值</value></data>
+  <data name="Comment" xml:space="preserve"><value>注释</value></data>
+  <data name="CharacterSet" xml:space="preserve"><value>字符集</value></data>
+  <data name="RequiredField" xml:space="preserve"><value>必须填写{0}。</value></data>
+  <data name="AtLeastOneColumn" xml:space="preserve"><value>至少需要一列。</value></data>
+  <data name="AtLeastOneValue" xml:space="preserve"><value>至少需要一个值。</value></data>
+  <data name="PrimaryKeyExists" xml:space="preserve"><value>该表已有主键。</value></data>
+  <data name="OnDelete" xml:space="preserve"><value>删除时</value></data>
+  <data name="OnUpdate" xml:space="preserve"><value>更新时</value></data>
+  <data name="Restrict" xml:space="preserve"><value>限制</value></data>
+  <data name="Cascade" xml:space="preserve"><value>级联</value></data>
+  <data name="SetNull" xml:space="preserve"><value>设为 NULL</value></data>
+  <data name="NoAction" xml:space="preserve"><value>无操作</value></data>
+  <data name="DefaultDatabaseNotConfigured" xml:space="preserve"><value>尚未配置默认数据库。</value></data>
+  <data name="CsvImport" xml:space="preserve"><value>CSV 导入</value></data>
+  <data name="CsvExport" xml:space="preserve"><value>CSV 导出</value></data>
+  <data name="SqlRestore" xml:space="preserve"><value>SQL 恢复</value></data>
+  <data name="SqlDump" xml:space="preserve"><value>SQL 转储</value></data>
+  <data name="Queued" xml:space="preserve"><value>排队中</value></data>
+  <data name="Running" xml:space="preserve"><value>运行中</value></data>
+  <data name="Completed" xml:space="preserve"><value>已完成</value></data>
+  <data name="Failed" xml:space="preserve"><value>失败</value></data>
+  <data name="Cancelled" xml:space="preserve"><value>已取消</value></data>
+  <data name="Denied" xml:space="preserve"><value>已拒绝</value></data>
+  <data name="BrowseMetadata" xml:space="preserve"><value>浏览元数据</value></data>
+  <data name="ReadRows" xml:space="preserve"><value>读取数据行</value></data>
+  <data name="InsertRow" xml:space="preserve"><value>插入行</value></data>
+  <data name="UpdateRow" xml:space="preserve"><value>更新行</value></data>
+  <data name="PreviewSchema" xml:space="preserve"><value>预览 Schema 更改</value></data>
+  <data name="ExecuteSchema" xml:space="preserve"><value>执行 Schema 更改</value></data>
+  <data name="ExecuteSql" xml:space="preserve"><value>执行 SQL</value></data>
+  <data name="Import" xml:space="preserve"><value>导入</value></data>
+  <data name="Export" xml:space="preserve"><value>导出</value></data>
+  <data name="SqlEditorLabel" xml:space="preserve"><value>SQL 编辑器</value></data>
+  <data name="SchemaWarning" xml:space="preserve"><value>执行 Schema 更改前请检查生成的 SQL。</value></data>
+  <data name="RowConflict" xml:space="preserve"><value>该行在加载后已被修改，请重新加载后再试。</value></data>
+  <data name="RowNotFound" xml:space="preserve"><value>该行已不存在。</value></data>
+  <data name="Yes" xml:space="preserve"><value>是</value></data>
+  <data name="No" xml:space="preserve"><value>否</value></data>
+  <data name="True" xml:space="preserve"><value>真</value></data>
+  <data name="False" xml:space="preserve"><value>假</value></data>
+  <data name="Binary" xml:space="preserve"><value>二进制</value></data>
+  <data name="Geometry" xml:space="preserve"><value>空间数据</value></data>
+  <data name="InvalidRequest" xml:space="preserve"><value>请求无效，请检查输入的值。</value></data>
+  <data name="ResourceNotFound" xml:space="preserve"><value>找不到请求的数据库资源。</value></data>
+  <data name="OperationConflict" xml:space="preserve"><value>操作期间数据库已发生变化，请刷新后重试。</value></data>
+  <data name="LimitExceeded" xml:space="preserve"><value>此操作超出了已配置的资源限制。</value></data>
+  <data name="UnsupportedOperation" xml:space="preserve"><value>数据库提供程序不支持此操作。</value></data>
+  <data name="DatabaseAuthenticationFailed" xml:space="preserve"><value>数据库拒绝了已配置的凭据。</value></data>
+  <data name="DatabaseRejected" xml:space="preserve"><value>数据库拒绝了此操作。</value></data>
+  <data name="OperationCancelled" xml:space="preserve"><value>操作已取消。</value></data>
+  <data name="OperationFailed" xml:space="preserve"><value>数据库操作失败，请检查服务器日志了解详情。</value></data>
+  <data name="RazorDbExport" xml:space="preserve"><value>文件由 RazorDbManager 导出</value></data>
+  <data name="Tab" xml:space="preserve"><value>制表符</value></data>
+  <data name="DataResultsTruncated" xml:space="preserve"><value>此页已因配置的响应或单元格预览限制而截断。</value></data>
+  <data name="SqlResultsTruncated" xml:space="preserve"><value>SQL 结果已因配置的行数或响应大小限制而截断。</value></data>
+  <data name="NoMessage" xml:space="preserve"><value>数据库返回了一条空消息。</value></data>
+  <data name="ForeignKeys" xml:space="preserve"><value>外键</value></data>
+  <data name="NoForeignKeys" xml:space="preserve"><value>未定义外键。</value></data>
+  <data name="SelectTableForCsv" xml:space="preserve"><value>开始 CSV 传输前，请选择表并启用“包含数据”。</value></data>
+  <data name="StartSqlRestore" xml:space="preserve"><value>开始 SQL 恢复</value></data>
+  <data name="SqlRestoreRequiresCapability" xml:space="preserve"><value>SQL 恢复需要同时启用导入和任意 SQL 能力，并通过高风险授权。</value></data>
+  <data name="ResultCode" xml:space="preserve"><value>结果代码</value></data>
+  <data name="ActivityAutoRefresh" xml:space="preserve"><value>运行中的任务会自动刷新。</value></data>
+  <data name="ActivityUpdatedOnDemand" xml:space="preserve"><value>刷新以检查最新活动。</value></data>
+  <data name="UnsupportedColumnAlterType" xml:space="preserve"><value>结构化编辑器无法安全修改此列的类型、默认值或生成定义。</value></data>
+  <data name="CombineFilters" xml:space="preserve"><value>组合筛选条件</value></data>
+  <data name="And" xml:space="preserve"><value>并且</value></data>
+  <data name="Or" xml:space="preserve"><value>或者</value></data>
+  <data name="AddFilter" xml:space="preserve"><value>添加筛选</value></data>
+  <data name="RemoveFilter" xml:space="preserve"><value>移除筛选</value></data>
+  <data name="FilterColumn" xml:space="preserve"><value>筛选列</value></data>
+  <data name="FilterOperator" xml:space="preserve"><value>筛选运算符</value></data>
+  <data name="FilterValue" xml:space="preserve"><value>筛选值</value></data>
+  <data name="ExactTotalCount" xml:space="preserve"><value>精确总行数</value></data>
+  <data name="TotalRows" xml:space="preserve"><value>共 {0} 行</value></data>
+  <data name="RowsOnPage" xml:space="preserve"><value>本页 {0} 行</value></data>
+  <data name="SortAscending" xml:space="preserve"><value>升序排序</value></data>
+  <data name="SortDescending" xml:space="preserve"><value>降序排序</value></data>
+  <data name="ClearSort" xml:space="preserve"><value>清除排序</value></data>
+  <data name="Equal" xml:space="preserve"><value>等于</value></data>
+  <data name="NotEqual" xml:space="preserve"><value>不等于</value></data>
+  <data name="LessThan" xml:space="preserve"><value>小于</value></data>
+  <data name="LessThanOrEqual" xml:space="preserve"><value>小于或等于</value></data>
+  <data name="GreaterThan" xml:space="preserve"><value>大于</value></data>
+  <data name="GreaterThanOrEqual" xml:space="preserve"><value>大于或等于</value></data>
+  <data name="Contains" xml:space="preserve"><value>包含</value></data>
+  <data name="StartsWith" xml:space="preserve"><value>开头为</value></data>
+  <data name="EndsWith" xml:space="preserve"><value>结尾为</value></data>
+  <data name="IsNull" xml:space="preserve"><value>为 NULL</value></data>
+  <data name="IsNotNull" xml:space="preserve"><value>不为 NULL</value></data>
+  <data name="QuickSearch" xml:space="preserve"><value>快速查询</value></data>
+  <data name="QuickSearchColumn" xml:space="preserve"><value>快速查询字段</value></data>
+  <data name="QuickSearchPlaceholder" xml:space="preserve"><value>输入要查找的值</value></data>
+  <data name="AllTextColumns" xml:space="preserve"><value>全部文本字段</value></data>
+  <data name="Search" xml:space="preserve"><value>查询</value></data>
+  <data name="ClearQuery" xml:space="preserve"><value>清除查询</value></data>
+  <data name="NewRecord" xml:space="preserve"><value>新增记录</value></data>
+  <data name="ColumnSearch" xml:space="preserve"><value>按字段查询</value></data>
+  <data name="AllColumns" xml:space="preserve"><value>显示全部字段</value></data>
+  <data name="RunQuery" xml:space="preserve"><value>执行查询</value></data>
+  <data name="SqlTemplate" xml:space="preserve"><value>SQL 快捷模板</value></data>
+  <data name="SqlTemplates" xml:space="preserve"><value>快捷 SQL</value></data>
+  <data name="BatchActions" xml:space="preserve"><value>批量操作</value></data>
+  <data name="SelectedRows" xml:space="preserve"><value>已选择 {0} 行</value></data>
+  <data name="SelectAllRows" xml:space="preserve"><value>选择本页全部行</value></data>
+  <data name="SelectRow" xml:space="preserve"><value>选择此行</value></data>
+  <data name="ClearSelection" xml:space="preserve"><value>清除选择</value></data>
+  <data name="ExportSelected" xml:space="preserve"><value>导出选中</value></data>
+  <data name="DeleteSelected" xml:space="preserve"><value>删除选中</value></data>
+  <data name="ConfirmBatchDelete" xml:space="preserve"><value>确定删除选中的 {0} 行吗？任意一行已变化时将回滚整批操作。</value></data>
+  <data name="BatchDeleteConflict" xml:space="preserve"><value>选中的某行已变化或不存在，本次未删除任何行。</value></data>
+  <data name="DeleteRows" xml:space="preserve"><value>批量删除行</value></data>
+</root>

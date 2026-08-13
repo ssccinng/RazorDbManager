@@ -1,0 +1,63 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+@inject IStringLocalizer<RazorDbManager.Resources.RazorDbManagerResources> L
+
+<div class="rdm-sql-editor" @ref="host"></div>
+
+@code {
+    [Parameter] public string Value { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+    [Parameter] public string Placeholder { get; set; } = string.Empty;
+    [Parameter] public string? AccessibilityLabel { get; set; }
+
+    private ElementReference host;
+    private IJSObjectReference? module;
+    private DotNetObjectReference<SqlEditor>? callback;
+    private string renderedValue = string.Empty;
+    private bool initialized;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/RazorDbManager/razordbmanager.js");
+            callback = DotNetObjectReference.Create(this);
+            renderedValue = Value;
+            string accessibilityLabel = string.IsNullOrWhiteSpace(AccessibilityLabel) ? L["SqlEditorLabel"] : AccessibilityLabel;
+            await module.InvokeVoidAsync("createSqlEditor", host, Value, Placeholder, accessibilityLabel, callback);
+            initialized = true;
+            return;
+        }
+
+        if (initialized && module is not null && !string.Equals(Value, renderedValue, StringComparison.Ordinal))
+        {
+            renderedValue = Value;
+            await module.InvokeVoidAsync("setSqlEditorValue", host, Value);
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnEditorValueChanged(string value)
+    {
+        renderedValue = value;
+        Value = value;
+        await ValueChanged.InvokeAsync(value);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (module is not null)
+        {
+            try
+            {
+                await module.InvokeVoidAsync("destroySqlEditor", host);
+                await module.DisposeAsync();
+            }
+            catch (JSDisconnectedException)
+            {
+            }
+        }
+
+        callback?.Dispose();
+    }
+}

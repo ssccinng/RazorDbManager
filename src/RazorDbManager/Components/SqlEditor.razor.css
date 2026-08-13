@@ -1,0 +1,69 @@
+.rdm-sql-editor {
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
+    background: #111820;
+}
+
+.rdm-sql-editor ::deep .cm-editor {
+    height: 100%;
+    background: #111820;
+    color: #e7edf3;
+    font: 13px/1.65 "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+}
+
+.rdm-sql-editor ::deep .cm-scroller {
+    overflow: auto;
+}
+
+.rdm-sql-editor ::deep .cm-gutters {
+    border-right: 1px solid #2c3944;
+    background: #18222b;
+    color: #71808d;
+}
+
+.rdm-sql-editor ::deep .cm-activeLine,
+.rdm-sql-editor ::deep .cm-activeLineGutter {
+    background: #1c2933;
+}
+
+.rdm-sql-editor ::deep .cm-selectionBackground,
+.rdm-sql-editor ::deep .cm-content ::selection {
+    background: #2b5f78 !important;
+}
+
+.rdm-sql-editor ::deep .cm-focused {
+    outline: none;
+}
+
+.rdm-sql-editor ::deep .cm-cursor {
+    border-left-color: #f4f7f9;
+}
+
+.rdm-sql-editor ::deep .tok-keyword,
+.rdm-sql-editor ::deep .tok-bool,
+.rdm-sql-editor ::deep .tok-null {
+    color: #72bde0;
+}
+
+.rdm-sql-editor ::deep .tok-string {
+    color: #a8cc8c;
+}
+
+.rdm-sql-editor ::deep .tok-number {
+    color: #e0b47a;
+}
+
+.rdm-sql-editor ::deep .tok-comment {
+    color: #7f8b94;
+    font-style: italic;
+}
+
+.rdm-sql-editor ::deep .tok-typeName,
+.rdm-sql-editor ::deep .tok-variableName {
+    color: #d8dde1;
+}
+
+.rdm-sql-editor ::deep .cm-placeholder {
+    color: #7f8b94;
+}

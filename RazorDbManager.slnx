@@ -1,0 +1,15 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/RazorDbManager.Core/RazorDbManager.Core.csproj" />
+    <Project Path="src/RazorDbManager.MySql/RazorDbManager.MySql.csproj" />
+    <Project Path="src/RazorDbManager/RazorDbManager.csproj" />
+  </Folder>
+  <Folder Name="/samples/">
+    <Project Path="samples/RazorDbManager.Sample/RazorDbManager.Sample.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/RazorDbManager.Core.Tests/RazorDbManager.Core.Tests.csproj" />
+    <Project Path="tests/RazorDbManager.MySql.Tests/RazorDbManager.MySql.Tests.csproj" />
+    <Project Path="tests/RazorDbManager.Tests/RazorDbManager.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,16 @@
+@page "/db-manager"
+@attribute [Authorize(Policy = RazorDbManagerPolicies.Access)]
+@rendermode InteractiveServer
+@inject Microsoft.Extensions.Options.IOptions<RazorDbManagerOptions> Options
+@inject IStringLocalizer<RazorDbManager.Resources.RazorDbManagerResources> L
+
+<PageTitle>@L["ProductName"]</PageTitle>
+
+@if (string.IsNullOrWhiteSpace(Options.Value.DefaultDatabaseId))
+{
+    <div role="alert">@L["DefaultDatabaseNotConfigured"]</div>
+}
+else
+{
+    <DatabaseManager DatabaseId="@Options.Value.DefaultDatabaseId" ReadOnly="@Options.Value.BuiltInPageReadOnly" />
+}

@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="ProductName" xml:space="preserve"><value>Database Manager</value></data>
+  <data name="Database" xml:space="preserve"><value>Database</value></data>
+  <data name="Tables" xml:space="preserve"><value>Tables</value></data>
+  <data name="SearchObjects" xml:space="preserve"><value>Search objects</value></data>
+  <data name="Data" xml:space="preserve"><value>Data</value></data>
+  <data name="Structure" xml:space="preserve"><value>Structure</value></data>
+  <data name="Sql" xml:space="preserve"><value>SQL</value></data>
+  <data name="Transfer" xml:space="preserve"><value>Import / Export</value></data>
+  <data name="Activity" xml:space="preserve"><value>Activity</value></data>
+  <data name="Refresh" xml:space="preserve"><value>Refresh</value></data>
+  <data name="Filter" xml:space="preserve"><value>Filter rows</value></data>
+  <data name="Apply" xml:space="preserve"><value>Apply</value></data>
+  <data name="Clear" xml:space="preserve"><value>Clear</value></data>
+  <data name="NewRow" xml:space="preserve"><value>New row</value></data>
+  <data name="EditRow" xml:space="preserve"><value>Edit row</value></data>
+  <data name="DeleteRow" xml:space="preserve"><value>Delete row</value></data>
+  <data name="Save" xml:space="preserve"><value>Save changes</value></data>
+  <data name="Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="Previous" xml:space="preserve"><value>Previous</value></data>
+  <data name="Next" xml:space="preserve"><value>Next</value></data>
+  <data name="Rows" xml:space="preserve"><value>rows</value></data>
+  <data name="NoTableSelected" xml:space="preserve"><value>Select a table to inspect its data and structure.</value></data>
+  <data name="NoTables" xml:space="preserve"><value>No tables are available for this database.</value></data>
+  <data name="NoRows" xml:space="preserve"><value>This query returned no rows.</value></data>
+  <data name="Loading" xml:space="preserve"><value>Loading database...</value></data>
+  <data name="Unavailable" xml:space="preserve"><value>The database provider is unavailable.</value></data>
+  <data name="Unauthorized" xml:space="preserve"><value>You do not have access to this database.</value></data>
+  <data name="ReadOnly" xml:space="preserve"><value>Read only</value></data>
+  <data name="Connected" xml:space="preserve"><value>Connected</value></data>
+  <data name="Execute" xml:space="preserve"><value>Execute</value></data>
+  <data name="CancelSql" xml:space="preserve"><value>Cancel execution</value></data>
+  <data name="CancelJob" xml:space="preserve"><value>Cancel job</value></data>
+  <data name="Preview" xml:space="preserve"><value>Preview</value></data>
+  <data name="SqlPlaceholder" xml:space="preserve"><value>Enter SQL to run with the configured SQL-console credential...</value></data>
+  <data name="SqlNotice" xml:space="preserve"><value>SQL is executed by the database account. Its grants are the security boundary.</value></data>
+  <data name="Columns" xml:space="preserve"><value>Columns</value></data>
+  <data name="Indexes" xml:space="preserve"><value>Indexes</value></data>
+  <data name="Name" xml:space="preserve"><value>Name</value></data>
+  <data name="Type" xml:space="preserve"><value>Type</value></data>
+  <data name="Nullable" xml:space="preserve"><value>Nullable</value></data>
+  <data name="Default" xml:space="preserve"><value>Default</value></data>
+  <data name="Key" xml:space="preserve"><value>Key</value></data>
+  <data name="ImportCsv" xml:space="preserve"><value>Import CSV</value></data>
+  <data name="ExportCsv" xml:space="preserve"><value>Export CSV</value></data>
+  <data name="ChooseFile" xml:space="preserve"><value>Choose a CSV or SQL file</value></data>
+  <data name="StartImport" xml:space="preserve"><value>Start import</value></data>
+  <data name="StartExport" xml:space="preserve"><value>Start export</value></data>
+  <data name="RecentJobs" xml:space="preserve"><value>Recent jobs</value></data>
+  <data name="AuditLog" xml:space="preserve"><value>Audit log</value></data>
+  <data name="NoActivity" xml:space="preserve"><value>No activity has been recorded yet.</value></data>
+  <data name="DangerousOperation" xml:space="preserve"><value>This operation can change or remove database data.</value></data>
+  <data name="ConfirmDelete" xml:space="preserve"><value>Delete this row? This cannot be undone.</value></data>
+  <data name="Dismiss" xml:space="preserve"><value>Dismiss</value></data>
+  <data name="Retry" xml:space="preserve"><value>Retry</value></data>
+  <data name="Status" xml:space="preserve"><value>Status</value></data>
+  <data name="Duration" xml:space="preserve"><value>Duration</value></data>
+  <data name="Started" xml:space="preserve"><value>Started</value></data>
+  <data name="Result" xml:space="preserve"><value>Result</value></data>
+  <data name="Null" xml:space="preserve"><value>NULL</value></data>
+  <data name="Omitted" xml:space="preserve"><value>Use default</value></data>
+  <data name="Page" xml:space="preserve"><value>Page</value></data>
+  <data name="RowsPerPage" xml:space="preserve"><value>Rows per page</value></data>
+  <data name="Details" xml:space="preserve"><value>Details</value></data>
+  <data name="Close" xml:space="preserve"><value>Close</value></data>
+  <data name="ImportDescription" xml:space="preserve"><value>Upload a CSV or SQL file directly to a protected server job.</value></data><data name="ExportDescription" xml:space="preserve"><value>Exports run as durable jobs and use one-time download links.</value></data><data name="Download" xml:space="preserve"><value>Download</value></data>
+  <data name="SchemaChange" xml:space="preserve"><value>Change structure</value></data><data name="Operation" xml:space="preserve"><value>Operation</value></data><data name="TableName" xml:space="preserve"><value>Table name</value></data><data name="NewName" xml:space="preserve"><value>New name</value></data><data name="Column" xml:space="preserve"><value>Column</value></data><data name="ColumnName" xml:space="preserve"><value>Column name</value></data><data name="Length" xml:space="preserve"><value>Length</value></data><data name="Precision" xml:space="preserve"><value>Precision</value></data><data name="Scale" xml:space="preserve"><value>Scale</value></data><data name="AutoIncrement" xml:space="preserve"><value>Auto increment</value></data><data name="PrimaryKey" xml:space="preserve"><value>Primary key</value></data><data name="Index" xml:space="preserve"><value>Index</value></data><data name="IndexName" xml:space="preserve"><value>Index name</value></data><data name="ColumnList" xml:space="preserve"><value>Columns (comma separated)</value></data><data name="Unique" xml:space="preserve"><value>Unique</value></data><data name="ForeignKey" xml:space="preserve"><value>Foreign key</value></data><data name="ForeignKeyName" xml:space="preserve"><value>Foreign key name</value></data><data name="ReferencedSchema" xml:space="preserve"><value>Referenced schema</value></data><data name="ReferencedTable" xml:space="preserve"><value>Referenced table</value></data><data name="ReferencedColumns" xml:space="preserve"><value>Referenced columns</value></data><data name="DdlImplicitCommit" xml:space="preserve"><value>DDL may implicitly commit and cannot be promised to roll back.</value></data><data name="ConfirmSchema" xml:space="preserve"><value>I reviewed the generated SQL and want to execute it.</value></data><data name="Back" xml:space="preserve"><value>Back</value></data><data name="CreateTable" xml:space="preserve"><value>Create table</value></data><data name="RenameTable" xml:space="preserve"><value>Rename table</value></data><data name="DropTable" xml:space="preserve"><value>Drop table</value></data><data name="AddColumn" xml:space="preserve"><value>Add column</value></data><data name="AlterColumn" xml:space="preserve"><value>Alter column</value></data><data name="DropColumn" xml:space="preserve"><value>Drop column</value></data><data name="AddIndex" xml:space="preserve"><value>Add index</value></data><data name="DropIndex" xml:space="preserve"><value>Drop index</value></data><data name="AddForeignKey" xml:space="preserve"><value>Add foreign key</value></data><data name="DropForeignKey" xml:space="preserve"><value>Drop foreign key</value></data>
+  <data name="DownloadBinary" xml:space="preserve"><value>Download binary value</value></data>
+  <data name="ExportResult" xml:space="preserve"><value>Export result</value></data>
+  <data name="CsvHeader" xml:space="preserve"><value>First row contains headers</value></data>
+  <data name="ContinueOnError" xml:space="preserve"><value>Continue after rejected rows</value></data>
+  <data name="Delimiter" xml:space="preserve"><value>Delimiter</value></data>
+  <data name="NullToken" xml:space="preserve"><value>NULL token</value></data>
+  <data name="IncludeSchema" xml:space="preserve"><value>Include schema</value></data>
+  <data name="IncludeData" xml:space="preserve"><value>Include data</value></data>
+  <data name="Gzip" xml:space="preserve"><value>Gzip compression</value></data>
+  <data name="WorkspaceLabel" xml:space="preserve"><value>Database workspace</value></data>
+  <data name="SchemasCount" xml:space="preserve"><value>{0} schemas</value></data>
+  <data name="Schema" xml:space="preserve"><value>Schema</value></data>
+  <data name="Table" xml:space="preserve"><value>Table</value></data>
+  <data name="View" xml:space="preserve"><value>View</value></data>
+  <data name="Engine" xml:space="preserve"><value>Engine</value></data>
+  <data name="Collation" xml:space="preserve"><value>Collation</value></data>
+  <data name="Generated" xml:space="preserve"><value>Generated</value></data>
+  <data name="Milliseconds" xml:space="preserve"><value>{0} ms</value></data>
+  <data name="RowsAffected" xml:space="preserve"><value>{0} rows affected</value></data>
+  <data name="UploadResult" xml:space="preserve"><value>Upload result</value></data>
+  <data name="InvalidColumnValues" xml:space="preserve"><value>One or more values are invalid for their database column type.</value></data>
+  <data name="BinaryImportOnly" xml:space="preserve"><value>Binary values must be supplied by import or SQL.</value></data>
+  <data name="NullUnchanged" xml:space="preserve"><value>NULL (unchanged)</value></data>
+  <data name="BinaryUnchanged" xml:space="preserve"><value>{0}: {1} bytes (unchanged)</value></data>
+  <data name="BinaryValue" xml:space="preserve"><value>&lt;{0}: {1} bytes&gt;</value></data>
+  <data name="InvalidSchemaDefinition" xml:space="preserve"><value>The schema definition is invalid.</value></data>
+  <data name="RemoveColumn" xml:space="preserve"><value>Remove column</value></data>
+  <data name="AllowedValues" xml:space="preserve"><value>Allowed values (comma separated)</value></data>
+  <data name="Unsigned" xml:space="preserve"><value>Unsigned</value></data>
+  <data name="None" xml:space="preserve"><value>None</value></data>
+  <data name="Literal" xml:space="preserve"><value>Literal</value></data>
+  <data name="DefaultValue" xml:space="preserve"><value>Default value</value></data>
+  <data name="Comment" xml:space="preserve"><value>Comment</value></data>
+  <data name="CharacterSet" xml:space="preserve"><value>Character set</value></data>
+  <data name="RequiredField" xml:space="preserve"><value>{0} is required.</value></data>
+  <data name="AtLeastOneColumn" xml:space="preserve"><value>At least one column is required.</value></data>
+  <data name="AtLeastOneValue" xml:space="preserve"><value>At least one value is required.</value></data>
+  <data name="PrimaryKeyExists" xml:space="preserve"><value>The table already has a primary key.</value></data>
+  <data name="OnDelete" xml:space="preserve"><value>On delete</value></data>
+  <data name="OnUpdate" xml:space="preserve"><value>On update</value></data>
+  <data name="Restrict" xml:space="preserve"><value>Restrict</value></data>
+  <data name="Cascade" xml:space="preserve"><value>Cascade</value></data>
+  <data name="SetNull" xml:space="preserve"><value>Set NULL</value></data>
+  <data name="NoAction" xml:space="preserve"><value>No action</value></data>
+  <data name="DefaultDatabaseNotConfigured" xml:space="preserve"><value>The default database is not configured.</value></data>
+  <data name="CsvImport" xml:space="preserve"><value>CSV import</value></data>
+  <data name="CsvExport" xml:space="preserve"><value>CSV export</value></data>
+  <data name="SqlRestore" xml:space="preserve"><value>SQL restore</value></data>
+  <data name="SqlDump" xml:space="preserve"><value>SQL dump</value></data>
+  <data name="Queued" xml:space="preserve"><value>Queued</value></data>
+  <data name="Running" xml:space="preserve"><value>Running</value></data>
+  <data name="Completed" xml:space="preserve"><value>Completed</value></data>
+  <data name="Failed" xml:space="preserve"><value>Failed</value></data>
+  <data name="Cancelled" xml:space="preserve"><value>Cancelled</value></data>
+  <data name="Denied" xml:space="preserve"><value>Denied</value></data>
+  <data name="BrowseMetadata" xml:space="preserve"><value>Browse metadata</value></data>
+  <data name="ReadRows" xml:space="preserve"><value>Read rows</value></data>
+  <data name="InsertRow" xml:space="preserve"><value>Insert row</value></data>
+  <data name="UpdateRow" xml:space="preserve"><value>Update row</value></data>
+  <data name="PreviewSchema" xml:space="preserve"><value>Preview schema change</value></data>
+  <data name="ExecuteSchema" xml:space="preserve"><value>Execute schema change</value></data>
+  <data name="ExecuteSql" xml:space="preserve"><value>Execute SQL</value></data>
+  <data name="Import" xml:space="preserve"><value>Import</value></data>
+  <data name="Export" xml:space="preserve"><value>Export</value></data>
+  <data name="SqlEditorLabel" xml:space="preserve"><value>SQL editor</value></data>
+  <data name="SchemaWarning" xml:space="preserve"><value>Review the generated SQL before executing this schema change.</value></data>
+  <data name="RowConflict" xml:space="preserve"><value>The row changed after it was loaded. Reload it before trying again.</value></data>
+  <data name="RowNotFound" xml:space="preserve"><value>The row no longer exists.</value></data>
+  <data name="Yes" xml:space="preserve"><value>Yes</value></data>
+  <data name="No" xml:space="preserve"><value>No</value></data>
+  <data name="True" xml:space="preserve"><value>True</value></data>
+  <data name="False" xml:space="preserve"><value>False</value></data>
+  <data name="Binary" xml:space="preserve"><value>Binary</value></data>
+  <data name="Geometry" xml:space="preserve"><value>Geometry</value></data>
+  <data name="InvalidRequest" xml:space="preserve"><value>The request is invalid. Review the entered values.</value></data>
+  <data name="ResourceNotFound" xml:space="preserve"><value>The requested database resource was not found.</value></data>
+  <data name="OperationConflict" xml:space="preserve"><value>The database changed during this operation. Refresh and try again.</value></data>
+  <data name="LimitExceeded" xml:space="preserve"><value>This operation exceeds a configured resource limit.</value></data>
+  <data name="UnsupportedOperation" xml:space="preserve"><value>The database provider does not support this operation.</value></data>
+  <data name="DatabaseAuthenticationFailed" xml:space="preserve"><value>The database rejected the configured credentials.</value></data>
+  <data name="DatabaseRejected" xml:space="preserve"><value>The database rejected the operation.</value></data>
+  <data name="OperationCancelled" xml:space="preserve"><value>The operation was cancelled.</value></data>
+  <data name="OperationFailed" xml:space="preserve"><value>The database operation failed. Check the server logs for details.</value></data>
+  <data name="RazorDbExport" xml:space="preserve"><value>File was exported by RazorDbManager</value></data>
+  <data name="Tab" xml:space="preserve"><value>Tab</value></data>
+  <data name="DataResultsTruncated" xml:space="preserve"><value>This page was truncated by the configured response or cell preview limit.</value></data>
+  <data name="SqlResultsTruncated" xml:space="preserve"><value>SQL results were truncated by the configured row or response-size limit.</value></data>
+  <data name="NoMessage" xml:space="preserve"><value>The database returned an empty message.</value></data>
+  <data name="ForeignKeys" xml:space="preserve"><value>Foreign keys</value></data>
+  <data name="NoForeignKeys" xml:space="preserve"><value>No foreign keys are defined.</value></data>
+  <data name="SelectTableForCsv" xml:space="preserve"><value>Select a table and include data before starting a CSV transfer.</value></data>
+  <data name="StartSqlRestore" xml:space="preserve"><value>Start SQL restore</value></data>
+  <data name="SqlRestoreRequiresCapability" xml:space="preserve"><value>SQL restore requires both import and arbitrary SQL capabilities, plus high-risk authorization.</value></data>
+  <data name="ResultCode" xml:space="preserve"><value>Result code</value></data>
+  <data name="ActivityAutoRefresh" xml:space="preserve"><value>Running jobs refresh automatically.</value></data>
+  <data name="ActivityUpdatedOnDemand" xml:space="preserve"><value>Refresh to check for new activity.</value></data>
+  <data name="UnsupportedColumnAlterType" xml:space="preserve"><value>This column type, default, or generated definition cannot be altered safely with the structured editor.</value></data>
+  <data name="CombineFilters" xml:space="preserve"><value>Combine filters</value></data>
+  <data name="And" xml:space="preserve"><value>AND</value></data>
+  <data name="Or" xml:space="preserve"><value>OR</value></data>
+  <data name="AddFilter" xml:space="preserve"><value>Add filter</value></data>
+  <data name="RemoveFilter" xml:space="preserve"><value>Remove filter</value></data>
+  <data name="FilterColumn" xml:space="preserve"><value>Filter column</value></data>
+  <data name="FilterOperator" xml:space="preserve"><value>Filter operator</value></data>
+  <data name="FilterValue" xml:space="preserve"><value>Filter value</value></data>
+  <data name="ExactTotalCount" xml:space="preserve"><value>Exact total count</value></data>
+  <data name="TotalRows" xml:space="preserve"><value>{0} total rows</value></data>
+  <data name="RowsOnPage" xml:space="preserve"><value>{0} rows on this page</value></data>
+  <data name="SortAscending" xml:space="preserve"><value>Sort ascending</value></data>
+  <data name="SortDescending" xml:space="preserve"><value>Sort descending</value></data>
+  <data name="ClearSort" xml:space="preserve"><value>Clear sort</value></data>
+  <data name="Equal" xml:space="preserve"><value>Equals</value></data>
+  <data name="NotEqual" xml:space="preserve"><value>Does not equal</value></data>
+  <data name="LessThan" xml:space="preserve"><value>Less than</value></data>
+  <data name="LessThanOrEqual" xml:space="preserve"><value>Less than or equal</value></data>
+  <data name="GreaterThan" xml:space="preserve"><value>Greater than</value></data>
+  <data name="GreaterThanOrEqual" xml:space="preserve"><value>Greater than or equal</value></data>
+  <data name="Contains" xml:space="preserve"><value>Contains</value></data>
+  <data name="StartsWith" xml:space="preserve"><value>Starts with</value></data>
+  <data name="EndsWith" xml:space="preserve"><value>Ends with</value></data>
+  <data name="IsNull" xml:space="preserve"><value>Is NULL</value></data>
+  <data name="IsNotNull" xml:space="preserve"><value>Is not NULL</value></data>
+  <data name="QuickSearch" xml:space="preserve"><value>Quick search</value></data>
+  <data name="QuickSearchColumn" xml:space="preserve"><value>Quick search column</value></data>
+  <data name="QuickSearchPlaceholder" xml:space="preserve"><value>Search values</value></data>
+  <data name="AllTextColumns" xml:space="preserve"><value>All text columns</value></data>
+  <data name="Search" xml:space="preserve"><value>Search</value></data>
+  <data name="ClearQuery" xml:space="preserve"><value>Clear query</value></data>
+  <data name="NewRecord" xml:space="preserve"><value>New record</value></data>
+  <data name="ColumnSearch" xml:space="preserve"><value>Search by columns</value></data>
+  <data name="AllColumns" xml:space="preserve"><value>Show all columns</value></data>
+  <data name="RunQuery" xml:space="preserve"><value>Run query</value></data>
+  <data name="SqlTemplate" xml:space="preserve"><value>SQL template</value></data>
+  <data name="SqlTemplates" xml:space="preserve"><value>Quick SQL</value></data>
+  <data name="BatchActions" xml:space="preserve"><value>Batch actions</value></data>
+  <data name="SelectedRows" xml:space="preserve"><value>{0} selected</value></data>
+  <data name="SelectAllRows" xml:space="preserve"><value>Select all rows on this page</value></data>
+  <data name="SelectRow" xml:space="preserve"><value>Select row</value></data>
+  <data name="ClearSelection" xml:space="preserve"><value>Clear selection</value></data>
+  <data name="ExportSelected" xml:space="preserve"><value>Export selected</value></data>
+  <data name="DeleteSelected" xml:space="preserve"><value>Delete selected</value></data>
+  <data name="ConfirmBatchDelete" xml:space="preserve"><value>Delete {0} selected rows? The entire batch rolls back if any row changed.</value></data>
+  <data name="BatchDeleteConflict" xml:space="preserve"><value>A selected row changed or no longer exists. No rows were deleted.</value></data>
+  <data name="DeleteRows" xml:space="preserve"><value>Batch delete rows</value></data>
+</root>

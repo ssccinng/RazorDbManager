@@ -1,0 +1,28 @@
+﻿@page "/"
+
+<PageTitle>RazorDbManager sample</PageTitle>
+
+<div class="sample-home">
+    <p class="eyebrow">Razor class library integration</p>
+    <h1>Database administration inside your Blazor app</h1>
+    <p class="lede">
+        This host demonstrates the built-in route, Interactive Server rendering,
+        host authorization, and a named MySQL or MariaDB connection.
+    </p>
+
+    <div class="sample-actions">
+        <a class="primary-action" href="db-manager">Open database manager</a>
+        <code>/db-manager</code>
+    </div>
+
+    <section class="integration-band">
+        <div><span>1</span><h2>Register services</h2><p>Add RazorDbManager and one named provider in <code>Program.cs</code>.</p></div>
+        <div><span>2</span><h2>Protect the surface</h2><p>Use host policies and least-privilege database credentials.</p></div>
+        <div><span>3</span><h2>Expose the route</h2><p>Add the RCL assembly to endpoint and interactive routing discovery.</p></div>
+    </section>
+
+    <aside class="sample-warning">
+        <strong>Sample authentication is intentionally synthetic.</strong>
+        Replace it with your application's real authentication before deployment.
+    </aside>
+</div>

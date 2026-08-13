@@ -1,0 +1,29 @@
+@using System.Globalization
+@inject NavigationManager Navigation
+
+<nav class="culture-switcher" aria-label="Language">
+    <a class="@GetCssClass("en-US")"
+       aria-current="@GetAriaCurrent("en-US")"
+       data-enhance-nav="false"
+       href="@GetCultureUrl("en-US")">EN</a>
+    <a class="@GetCssClass("zh-CN")"
+       aria-current="@GetAriaCurrent("zh-CN")"
+       data-enhance-nav="false"
+       href="@GetCultureUrl("zh-CN")">中文</a>
+</nav>
+
+@code {
+    private bool IsCurrent(string culture) =>
+        string.Equals(CultureInfo.CurrentUICulture.Name, culture, StringComparison.OrdinalIgnoreCase);
+
+    private string GetCssClass(string culture) => IsCurrent(culture) ? "active" : string.Empty;
+
+    private string? GetAriaCurrent(string culture) => IsCurrent(culture) ? "true" : null;
+
+    private string GetCultureUrl(string culture)
+    {
+        var relativeUrl = Navigation.ToBaseRelativePath(Navigation.Uri);
+        var returnUrl = string.IsNullOrEmpty(relativeUrl) ? "/" : $"/{relativeUrl}";
+        return $"/culture/{culture}?returnUrl={Uri.EscapeDataString(returnUrl)}";
+    }
+}
