@@ -2,13 +2,13 @@
     min-height: 0;
     height: 100%;
     overflow: hidden;
-    background: #111820;
+    background: var(--rdm-code-bg, #f3f6f8);
 }
 
 .rdm-sql-editor ::deep .cm-editor {
     height: 100%;
-    background: #111820;
-    color: #e7edf3;
+    background: var(--rdm-code-bg, #f3f6f8);
+    color: var(--rdm-code-text, #2f414d);
     font: 13px/1.65 "Cascadia Code", "SFMono-Regular", Consolas, monospace;
 }
 
@@ -17,19 +17,19 @@
 }
 
 .rdm-sql-editor ::deep .cm-gutters {
-    border-right: 1px solid #2c3944;
-    background: #18222b;
-    color: #71808d;
+    border-right: 1px solid var(--rdm-code-border, #c8d3da);
+    background: var(--rdm-code-gutter, #e8eef2);
+    color: var(--rdm-code-muted, #74818a);
 }
 
 .rdm-sql-editor ::deep .cm-activeLine,
 .rdm-sql-editor ::deep .cm-activeLineGutter {
-    background: #1c2933;
+    background: var(--rdm-code-active, #e6f0f6);
 }
 
 .rdm-sql-editor ::deep .cm-selectionBackground,
 .rdm-sql-editor ::deep .cm-content ::selection {
-    background: #2b5f78 !important;
+    background: var(--rdm-code-selection, #cfe5f3) !important;
 }
 
 .rdm-sql-editor ::deep .cm-focused {
@@ -37,33 +37,9 @@
 }
 
 .rdm-sql-editor ::deep .cm-cursor {
-    border-left-color: #f4f7f9;
-}
-
-.rdm-sql-editor ::deep .tok-keyword,
-.rdm-sql-editor ::deep .tok-bool,
-.rdm-sql-editor ::deep .tok-null {
-    color: #72bde0;
-}
-
-.rdm-sql-editor ::deep .tok-string {
-    color: #a8cc8c;
-}
-
-.rdm-sql-editor ::deep .tok-number {
-    color: #e0b47a;
-}
-
-.rdm-sql-editor ::deep .tok-comment {
-    color: #7f8b94;
-    font-style: italic;
-}
-
-.rdm-sql-editor ::deep .tok-typeName,
-.rdm-sql-editor ::deep .tok-variableName {
-    color: #d8dde1;
+    border-left-color: var(--rdm-code-cursor, #175f87);
 }
 
 .rdm-sql-editor ::deep .cm-placeholder {
-    color: #7f8b94;
+    color: var(--rdm-code-muted, #74818a);
 }

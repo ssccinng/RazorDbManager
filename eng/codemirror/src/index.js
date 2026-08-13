@@ -1,9 +1,22 @@
 import { basicSetup } from "codemirror";
 import { MySQL, sql } from "@codemirror/lang-sql";
+import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { EditorState } from "@codemirror/state";
 import { EditorView, placeholder } from "@codemirror/view";
+import { tags } from "@lezer/highlight";
 
 const editors = new WeakMap();
+const sqlHighlightStyle = HighlightStyle.define([
+  { tag: [tags.keyword, tags.operatorKeyword, tags.bool, tags.null], color: "var(--rdm-code-keyword)", fontWeight: "600" },
+  { tag: [tags.string, tags.character], color: "var(--rdm-code-string)" },
+  { tag: tags.number, color: "var(--rdm-code-number)" },
+  { tag: tags.comment, color: "var(--rdm-code-comment)", fontStyle: "italic" },
+  { tag: [tags.typeName, tags.className], color: "var(--rdm-code-type)" },
+  { tag: tags.operator, color: "var(--rdm-code-operator)" },
+  { tag: [tags.variableName, tags.propertyName], color: "var(--rdm-code-variable)" },
+  { tag: [tags.punctuation, tags.separator], color: "var(--rdm-code-muted)" },
+  { tag: tags.invalid, color: "var(--rdm-code-invalid)", textDecoration: "underline" }
+]);
 
 export function createSqlEditor(element, value, placeholderText, accessibilityLabel, callback) {
   const state = EditorState.create({
@@ -11,6 +24,7 @@ export function createSqlEditor(element, value, placeholderText, accessibilityLa
     extensions: [
       basicSetup,
       sql({ dialect: MySQL }),
+      syntaxHighlighting(sqlHighlightStyle),
       EditorView.lineWrapping,
       placeholder(placeholderText ?? ""),
       EditorView.contentAttributes.of({
