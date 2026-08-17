@@ -14,9 +14,10 @@ param(
 $ErrorActionPreference = "Stop"
 $projectDirectory = [System.IO.Path]::GetFullPath($PSScriptRoot)
 $project = Join-Path $projectDirectory "RazorDbManager.PackageSmoke.csproj"
-$nugetConfig = Join-Path $projectDirectory "NuGet.Config"
+$nugetConfigTemplate = Join-Path $projectDirectory "NuGet.Config"
 $resolvedPackageDirectory = [System.IO.Path]::GetFullPath($PackageDirectory)
 $runRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("RazorDbManager.PackageSmoke-" + [Guid]::NewGuid().ToString("N"))
+$nugetConfig = Join-Path $runRoot "NuGet.Config"
 $packagesPath = Join-Path $runRoot "packages"
 $intermediatePath = Join-Path $runRoot "obj"
 $outputPath = Join-Path $runRoot "bin"
@@ -77,6 +78,17 @@ try {
     }
 
     New-Item -ItemType Directory -Path $runRoot | Out-Null
+    Copy-Item -LiteralPath $nugetConfigTemplate -Destination $nugetConfig
+    [xml] $nugetConfigXml = Get-Content -LiteralPath $nugetConfig -Raw
+    $localPackageSource = @($nugetConfigXml.configuration.packageSources.add) |
+        Where-Object { $_.key -eq "RazorDbManager local packages" } |
+        Select-Object -First 1
+    if ($null -eq $localPackageSource) {
+        throw "The package consumer NuGet.Config has no local package source."
+    }
+    $localPackageSource.value = $resolvedPackageDirectory
+    $nugetConfigXml.Save($nugetConfig)
+
     $commonProperties = @(
         "/p:RestorePackagesPath=$packagesPath",
         "/p:BaseIntermediateOutputPath=$intermediatePath$([System.IO.Path]::DirectorySeparatorChar)",

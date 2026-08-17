@@ -28,14 +28,31 @@ database account's grants. Queued-job reauthorization is described below.
 The SQL workspace uses a bundled CodeMirror 6 editor; the host does not need a
 JavaScript package manager or additional script tag.
 
-## Install
+## Install from NuGet
 
-Install the provider package. It brings the UI and provider-neutral contracts
-as transitive dependencies:
+Install the public
+[`RazorDbManager.MySql`](https://www.nuget.org/packages/RazorDbManager.MySql/1.0.0)
+package. It brings the UI and provider-neutral contracts as transitive
+dependencies, so this is the only package a MySQL or MariaDB host needs to
+reference.
+
+With the .NET CLI:
 
 ```shell
-dotnet add package RazorDbManager.MySql
+dotnet add package RazorDbManager.MySql --version 1.0.0
 ```
+
+With a project file:
+
+```xml
+<ItemGroup>
+  <PackageReference Include="RazorDbManager.MySql" Version="1.0.0" />
+</ItemGroup>
+```
+
+In Visual Studio, open **Manage NuGet Packages**, search for
+`RazorDbManager.MySql`, select version `1.0.0`, and install it into the Blazor
+host project.
 
 Register Interactive Server components, authentication policies, and a named
 database in `Program.cs`:

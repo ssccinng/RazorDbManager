@@ -22,13 +22,29 @@ provider 支持 MySQL 和 MariaDB，使用 Interactive Server 渲染，提供有
 重新授权规则见下文。SQL 工作区内置 CodeMirror 6，宿主不需要安装前端包或添加
 额外的脚本标签。
 
-## 安装
+## 从 NuGet 安装
 
-只需安装 MySQL provider 包；UI 和 provider-neutral 契约会作为传递依赖安装：
+安装公开的
+[`RazorDbManager.MySql`](https://www.nuget.org/packages/RazorDbManager.MySql/1.0.0)
+包即可。UI 和 provider-neutral 契约会作为传递依赖自动安装，因此 MySQL 或
+MariaDB 宿主不需要再单独引用另外两个包。
+
+使用 .NET CLI：
 
 ```shell
-dotnet add package RazorDbManager.MySql
+dotnet add package RazorDbManager.MySql --version 1.0.0
 ```
+
+直接编辑项目文件：
+
+```xml
+<ItemGroup>
+  <PackageReference Include="RazorDbManager.MySql" Version="1.0.0" />
+</ItemGroup>
+```
+
+在 Visual Studio 中打开“管理 NuGet 程序包”，搜索
+`RazorDbManager.MySql`，选择 `1.0.0` 并安装到 Blazor 宿主项目。
 
 在 `Program.cs` 中注册 Interactive Server、认证策略和逻辑数据库：
 
