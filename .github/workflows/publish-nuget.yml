@@ -11,6 +11,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 concurrency:
   group: publish-nuget-${{ inputs.version }}
@@ -75,13 +76,19 @@ jobs:
             artifacts/packages/*.snupkg
           if-no-files-found: error
 
+      - name: Authenticate to NuGet.org
+        uses: NuGet/login@v1
+        id: nuget-login
+        with:
+          user: scixing
+
       - name: Publish packages
         shell: pwsh
         env:
-          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+          NUGET_API_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
         run: |
           if ([string]::IsNullOrWhiteSpace($env:NUGET_API_KEY)) {
-              throw "Repository secret NUGET_API_KEY is not configured."
+              throw "NuGet.org did not issue a temporary publishing credential."
           }
 
           $packages = @(
