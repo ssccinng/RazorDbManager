@@ -1,0 +1,103 @@
+name: publish-nuget
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Package version to publish
+        required: true
+        default: 1.0.0
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-nuget-${{ inputs.version }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PACKAGE_VERSION: ${{ inputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: |
+            Directory.Packages.props
+            NuGet.Config
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: eng/codemirror/package-lock.json
+
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+        working-directory: eng/codemirror
+      - run: npm run build
+        working-directory: eng/codemirror
+      - run: git diff --exit-code -- src/RazorDbManager/wwwroot/razordbmanager.js
+
+      - name: Validate requested version
+        shell: pwsh
+        run: |
+          $projectVersion = (dotnet msbuild src/RazorDbManager.MySql/RazorDbManager.MySql.csproj `
+            -getProperty:PackageVersion -nologo).Trim()
+          if ($projectVersion -ne $env:PACKAGE_VERSION) {
+              throw "Requested version '$env:PACKAGE_VERSION' does not match project version '$projectVersion'."
+          }
+
+      - run: dotnet restore RazorDbManager.slnx --configfile NuGet.Config
+      - run: dotnet build RazorDbManager.slnx --configuration Release --no-restore
+      - run: dotnet test RazorDbManager.slnx --configuration Release --no-build --no-restore
+      - run: dotnet pack src/RazorDbManager.Core --configuration Release --no-build --no-restore --output artifacts/packages
+      - run: dotnet pack src/RazorDbManager --configuration Release --no-build --no-restore --output artifacts/packages
+      - run: dotnet pack src/RazorDbManager.MySql --configuration Release --no-build --no-restore --output artifacts/packages
+
+      - name: Verify package contents
+        shell: pwsh
+        run: ./eng/package-smoke/Verify-Packages.ps1
+
+      - name: Verify clean package consumer
+        shell: pwsh
+        run: ./eng/package-smoke/Test-PackageConsumer.ps1
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nuget-${{ inputs.version }}
+          path: |
+            artifacts/packages/*.nupkg
+            artifacts/packages/*.snupkg
+          if-no-files-found: error
+
+      - name: Publish packages
+        shell: pwsh
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:NUGET_API_KEY)) {
+              throw "Repository secret NUGET_API_KEY is not configured."
+          }
+
+          $packages = @(
+              "artifacts/packages/RazorDbManager.Core.$env:PACKAGE_VERSION.nupkg",
+              "artifacts/packages/RazorDbManager.$env:PACKAGE_VERSION.nupkg",
+              "artifacts/packages/RazorDbManager.MySql.$env:PACKAGE_VERSION.nupkg"
+          )
+          foreach ($package in $packages) {
+              if (-not (Test-Path -LiteralPath $package -PathType Leaf)) {
+                  throw "Package was not found: $package"
+              }
+              dotnet nuget push $package `
+                  --api-key $env:NUGET_API_KEY `
+                  --source https://api.nuget.org/v3/index.json `
+                  --skip-duplicate
+              if ($LASTEXITCODE -ne 0) {
+                  throw "Publishing '$package' failed with exit code $LASTEXITCODE."
+              }
+          }
